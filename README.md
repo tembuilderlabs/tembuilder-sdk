@@ -4,7 +4,7 @@ Official clients for the [Tembuilder](https://tembuilder.com) PDF rendering API.
 
 | Language | Package | Install |
 | --- | --- | --- |
-| Node.js / TypeScript | [`@tembuilder/sdk`](node/) | `npm install @tembuilder/sdk` |
+| Node.js / TypeScript | [`@tembuilderlabs/sdk`](node/) | `npm install @tembuilderlabs/sdk` |
 | Python | [`tembuilder`](python/) | `pip install tembuilder` |
 | Go | [`github.com/tembuilderlabs/tembuilder-sdk/go`](go/) | `go get github.com/tembuilderlabs/tembuilder-sdk/go` |
 

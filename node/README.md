@@ -1,9 +1,9 @@
-# @tembuilder/sdk
+# @tembuilderlabs/sdk
 
 Official Node.js / TypeScript SDK for the [Tembuilder](https://tembuilder.com) PDF rendering API.
 
 ```bash
-npm install @tembuilder/sdk
+npm install @tembuilderlabs/sdk
 ```
 
 Requires Node 20+. Fully typed from the public OpenAPI contract.
@@ -12,7 +12,7 @@ Requires Node 20+. Fully typed from the public OpenAPI contract.
 
 ```ts
 import { writeFile } from 'node:fs/promises'
-import { Tembuilder } from '@tembuilder/sdk'
+import { Tembuilder } from '@tembuilderlabs/sdk'
 
 const tembuilder = new Tembuilder({ apiKey: process.env.TEMBUILDER_API_KEY })
 
@@ -71,7 +71,7 @@ All errors extend `TembuilderError`:
 ## Webhooks
 
 ```ts
-import { verifyWebhook } from '@tembuilder/sdk'
+import { verifyWebhook } from '@tembuilderlabs/sdk'
 
 app.post('/webhooks/tembuilder', express.raw({ type: 'application/json' }), (req, res) => {
   const event = verifyWebhook({ payload: req.body, headers: req.headers, secret: process.env.TEMBUILDER_WEBHOOK_SECRET! })

@@ -47,10 +47,10 @@ case "$language" in
     printf '{ "name": "tembuilder-e2e", "private": true, "type": "module" }\n' > "$work/package.json"
     if [ "$source" = local ]; then
       (cd "$root/node" && pnpm build >/dev/null && npm pack --silent --pack-destination "$work" >/dev/null)
-      package="$(ls "$work"/tembuilder-sdk-*.tgz)"
+      package="$(ls "$work"/tembuilderlabs-sdk-*.tgz)"
       export EXPECTED_VERSION="$(local_version "$root/node/src/version.ts")"
     else
-      package="@tembuilder/sdk@$source"
+      package="@tembuilderlabs/sdk@$source"
       [ "$source" = latest ] || export EXPECTED_VERSION="$source"
     fi
     (cd "$work" && retry npm install --no-audit --no-fund --silent "$package")

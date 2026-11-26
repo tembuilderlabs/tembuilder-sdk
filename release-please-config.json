@@ -6,7 +6,7 @@
     "node": {
       "release-type": "node",
       "component": "node",
-      "package-name": "@tembuilder/sdk",
+      "package-name": "@tembuilderlabs/sdk",
       "extra-files": ["src/version.ts"]
     },
     "python": {

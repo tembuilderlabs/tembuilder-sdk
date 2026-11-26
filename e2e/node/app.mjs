@@ -1,11 +1,11 @@
-// A fresh consumer app: e2e/run.sh installs @tembuilder/sdk into an empty
+// A fresh consumer app: e2e/run.sh installs @tembuilderlabs/sdk into an empty
 // project (from the packed tarball or from npm) and runs this file, so it
 // proves the package as users get it: exports, version, webhooks and, with
 // TEMBUILDER_API_KEY/TEMBUILDER_BASE_URL/TEMBUILDER_SMOKE_TEMPLATE, a real render.
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-import { APIError, Tembuilder, VERSION, verifyWebhook } from '@tembuilder/sdk'
+import { APIError, Tembuilder, VERSION, verifyWebhook } from '@tembuilderlabs/sdk'
 
 const step = (name) => console.log(`- ${name}`)
 
@@ -14,7 +14,7 @@ if (process.env.EXPECTED_VERSION) assert.equal(VERSION, process.env.EXPECTED_VER
 
 step('CommonJS entry point')
 const { createRequire } = await import('node:module')
-assert.equal(createRequire(import.meta.url)('@tembuilder/sdk').VERSION, VERSION)
+assert.equal(createRequire(import.meta.url)('@tembuilderlabs/sdk').VERSION, VERSION)
 
 step('webhook signature vectors')
 const contract = JSON.parse(readFileSync(process.env.WEBHOOK_VECTORS, 'utf8'))
