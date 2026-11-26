@@ -1,0 +1,103 @@
+{
+  "description": "Webhook signature vectors: v1=hex(HMAC-SHA256(base64url_decode(secret), timestamp + '.' + body)), tolerance 300 s.",
+  "secret": "dGVtYnVpbGRlci1jb250cmFjdC1zZWNyZXQtMDEyMzQ1Njc4OQ",
+  "tolerance_seconds": 300,
+  "vectors": [
+    {
+      "name": "valid signature",
+      "timestamp": "1763627400",
+      "signature": "v1=8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627400,
+      "valid": true
+    },
+    {
+      "name": "valid among several signatures",
+      "timestamp": "1763627400",
+      "signature": "v1=04a8be40ea043f354e6b29c9b4449c153ffb5d2299577c25482f98de7c3b71b4, v1=8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627699,
+      "valid": true
+    },
+    {
+      "name": "body changed by one byte",
+      "timestamp": "1763627400",
+      "signature": "v1=8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"succesS\"}}",
+      "now": 1763627400,
+      "valid": false
+    },
+    {
+      "name": "wrong secret",
+      "timestamp": "1763627400",
+      "signature": "v1=04a8be40ea043f354e6b29c9b4449c153ffb5d2299577c25482f98de7c3b71b4",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627400,
+      "valid": false
+    },
+    {
+      "name": "timestamp too old",
+      "timestamp": "1763627400",
+      "signature": "v1=8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627701,
+      "valid": false
+    },
+    {
+      "name": "timestamp in the future",
+      "timestamp": "1763627400",
+      "signature": "v1=8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627099,
+      "valid": false
+    },
+    {
+      "name": "missing signature",
+      "timestamp": "1763627400",
+      "signature": null,
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627400,
+      "valid": false
+    },
+    {
+      "name": "missing timestamp",
+      "timestamp": null,
+      "signature": "v1=8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627400,
+      "valid": false
+    },
+    {
+      "name": "non-numeric timestamp",
+      "timestamp": "yesterday",
+      "signature": "v1=8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627400,
+      "valid": false
+    },
+    {
+      "name": "signature without prefix",
+      "timestamp": "1763627400",
+      "signature": "8a382634f62137ce77477bf38881c20e4f72f8464e33a6c26018320c395f7fc5",
+      "body": "{\"api_version\":\"2026-09-12\",\"type\":\"renders.status\",\"occurred_at\":\"2026-11-20T08:30:01Z\",\"data\":{\"render_id\":\"5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d\",\"status\":\"success\"}}",
+      "now": 1763627400,
+      "valid": false
+    },
+    {
+      "name": "signed but not JSON",
+      "timestamp": "1763627400",
+      "signature": "v1=da3eba1fa50ebd147f4894012d7f7bdb75b9484a01b70ef48ace1e0d6eb1ca12",
+      "body": "not json",
+      "now": 1763627400,
+      "valid": false
+    },
+    {
+      "name": "signed JSON that is not an object",
+      "timestamp": "1763627400",
+      "signature": "v1=59cb97d7e4b8dc2bf75ecb813fbaf5ada5d69dde0fff67feb5dcfa167c2ade3c",
+      "body": "[1,2]",
+      "now": 1763627400,
+      "valid": false
+    }
+  ]
+}

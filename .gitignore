@@ -1,0 +1,18 @@
+node_modules/
+dist/
+coverage/
+.coverage
+coverage.out
+*.cov
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+
+# Local credentials for make e2e-live
+.env.smoke
+
+# Vitest local reports
+.vitest/

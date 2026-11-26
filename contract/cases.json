@@ -1,0 +1,516 @@
+{
+  "description": "Language-neutral HTTP contract cases. Every SDK replays each case against a local stub server: the SDK call (operation + args) must send exactly `request` (ApiKey header = api_key) and turn `response` into `expect`. `$response` means the parsed response body. Every case must agree with openapi/tembuilder.yaml (checked by scripts/contractcheck); a case that deliberately models a response outside the contract says why in `off_contract`.",
+  "api_key": "contract-test-key",
+  "cases": [
+    {
+      "name": "getAccount returns the key identity",
+      "operation": "getAccount",
+      "args": {},
+      "request": {
+        "method": "GET",
+        "path": "/v1/me",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "api_key_id": "6f1d2c1e-7a55-4c0e-9a0e-3a1f1b2c3d4e",
+          "workspace_id": "0c8a1d4f-2b3c-4d5e-8f90-a1b2c3d4e5f6",
+          "project": {
+            "id": "9b2e7c1a-3d4f-4a5b-8c6d-7e8f9a0b1c2d",
+            "name": "Billing",
+            "slug": "billing"
+          },
+          "scopes": [
+            "template:render"
+          ]
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
+      "name": "getAccount maps 401 to an API error",
+      "operation": "getAccount",
+      "args": {},
+      "request": {
+        "method": "GET",
+        "path": "/v1/me",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_UNAUTHENTICATED",
+          "description": "invalid api key",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 401,
+          "code": "COMMON_UNAUTHENTICATED"
+        }
+      }
+    },
+    {
+      "name": "listTemplates sends filters and pagination",
+      "operation": "listTemplates",
+      "args": {
+        "status": "published",
+        "search": "inv",
+        "page": 2,
+        "per_page": 10
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates",
+        "query": {
+          "status": "published",
+          "search": "inv",
+          "page": "2",
+          "per_page": "10"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "data": [
+            {
+              "id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+              "slug": "invoice",
+              "name": "Invoice",
+              "current_version": 2,
+              "status": "published",
+              "published_versions": [
+                1,
+                2
+              ],
+              "created_at": "2026-11-01T10:00:00Z",
+              "updated_at": null
+            }
+          ],
+          "page": 2,
+          "per_page": 10,
+          "has_more": false
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
+      "name": "listTemplates maps a validation error",
+      "operation": "listTemplates",
+      "args": {
+        "per_page": 500
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates",
+        "query": {
+          "per_page": "500"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_VALIDATION",
+          "description": "per_page must be an integer between 1 and 100",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 400,
+          "code": "COMMON_VALIDATION"
+        }
+      }
+    },
+    {
+      "name": "getTemplate by slug with a version",
+      "operation": "getTemplate",
+      "args": {
+        "template_id": "invoice",
+        "version": 2
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates/invoice",
+        "query": {
+          "version": "2"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "slug": "invoice",
+          "name": "Invoice",
+          "current_version": 2,
+          "status": "published",
+          "published_versions": [
+            1,
+            2
+          ],
+          "created_at": "2026-11-01T10:00:00Z",
+          "updated_at": null,
+          "versions": [
+            {
+              "version": 1,
+              "status": "published",
+              "schema_version": 1,
+              "created_at": "2026-11-01T10:00:00Z",
+              "updated_at": null
+            },
+            {
+              "version": 2,
+              "status": "published",
+              "schema_version": 1,
+              "created_at": "2026-11-02T10:00:00Z",
+              "updated_at": "2026-11-03T10:00:00Z"
+            }
+          ],
+          "input": {
+            "version": 2,
+            "variants": [
+              {
+                "name": "base",
+                "base": true
+              }
+            ],
+            "parameters": [
+              {
+                "name": "customer",
+                "type": "text",
+                "required": true
+              }
+            ],
+            "parameters_schema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "customer": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "customer"
+              ]
+            },
+            "example_parameters": {
+              "customer": ""
+            }
+          }
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
+      "name": "getTemplate maps 404",
+      "operation": "getTemplate",
+      "args": {
+        "template_id": "missing"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates/missing",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "TEMPLATE_NOT_FOUND",
+          "description": "template not found",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 404,
+          "code": "TEMPLATE_NOT_FOUND"
+        }
+      }
+    },
+    {
+      "name": "createRender posts the request body",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": 202,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+          "status": "queued",
+          "status_url": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
+      "name": "createRender maps an unpublished version",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6"
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6"
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "PDF_TEMPLATE_VERSION_NOT_PUBLISHED",
+          "description": "template version is not published",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 403,
+          "code": "PDF_TEMPLATE_VERSION_NOT_PUBLISHED"
+        }
+      }
+    },
+    {
+      "name": "listRenders sends filters",
+      "operation": "listRenders",
+      "args": {
+        "status": "success",
+        "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+        "started_after": "2026-11-20T00:00:00Z",
+        "page": 1,
+        "per_page": 1
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders",
+        "query": {
+          "status": "success",
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "started_after": "2026-11-20T00:00:00Z",
+          "page": "1",
+          "per_page": "1"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "data": [
+            {
+              "id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+              "short_id": "AB12CD",
+              "status": "success",
+              "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+              "template_version": 2,
+              "variant": null,
+              "duration_ms": 1200,
+              "error_message": null,
+              "started_at": "2026-11-20T08:30:00Z",
+              "completed_at": "2026-11-20T08:30:01Z",
+              "status_url": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+              "download_url": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download"
+            }
+          ],
+          "page": 1,
+          "per_page": 1,
+          "has_more": true
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
+      "name": "getRender returns a terminal status",
+      "operation": "getRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+          "status": "success",
+          "duration_ms": 1200,
+          "download_url": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download"
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
+      "name": "getRender maps a gateway error without a JSON body",
+      "operation": "getRender",
+      "off_contract": "A proxy in front of the API can answer with a non-JSON 5xx the contract cannot describe; SDKs must still raise a typed error.",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "content-type": "text/plain"
+        },
+        "text": "upstream exploded"
+      },
+      "expect": {
+        "error": {
+          "status": 500,
+          "code": "HTTP_500"
+        }
+      }
+    },
+    {
+      "name": "downloadRender returns PDF bytes and filename",
+      "operation": "downloadRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/pdf",
+          "content-disposition": "attachment; filename=\"invoice-v2-base-AB12CD.pdf\""
+        },
+        "bodyBase64": "JVBERi0xLjcKJXRlc3QK"
+      },
+      "expect": {
+        "file": {
+          "base64": "JVBERi0xLjcKJXRlc3QK",
+          "filename": "invoice-v2-base-AB12CD.pdf",
+          "content_type": "application/pdf"
+        }
+      }
+    },
+    {
+      "name": "downloadRender maps missing output",
+      "operation": "downloadRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "RENDER_OUTPUT_NOT_FOUND",
+          "description": "render has no output",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 404,
+          "code": "RENDER_OUTPUT_NOT_FOUND"
+        }
+      }
+    }
+  ]
+}

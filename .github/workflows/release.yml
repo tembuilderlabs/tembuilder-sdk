@@ -1,0 +1,137 @@
+name: Release
+
+# release-please opens a release PR per package from Conventional Commits.
+# Merging it tags the release; the jobs below publish only from that tag,
+# in CI, with short-lived OIDC credentials (no long-lived tokens).
+#
+# Every SDK is checked twice as a user would get it (e2e/run.sh):
+#   1. before publishing: the built package installed into a fresh app;
+#   2. after publishing: the exact released version installed from npm, PyPI
+#      or the Go proxy into a fresh app, rendering a real PDF on staging.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.release.outputs['node--release_created'] }}
+      node_version: ${{ steps.release.outputs['node--version'] }}
+      python: ${{ steps.release.outputs['python--release_created'] }}
+      python_version: ${{ steps.release.outputs['python--version'] }}
+      go: ${{ steps.release.outputs['go--release_created'] }}
+      go_version: ${{ steps.release.outputs['go--version'] }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  npm:
+    needs: release-please
+    if: needs.release-please.outputs.node == 'true'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: cd node && pnpm typecheck && pnpm test && pnpm build
+      - name: Packed tarball works in a fresh app
+        run: ./e2e/run.sh node local
+      # Trusted publishing (OIDC, no NPM_TOKEN) needs npm >= 11.5.1; Node 22 ships npm 10.
+      - run: npm install -g npm@^11.5.1
+      - run: cd node && npm publish --provenance --access public
+
+  pypi:
+    needs: release-please
+    if: needs.release-please.outputs.python == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: cd python && uv sync --frozen && uv run --frozen pytest --cov && uv build
+      - name: Built wheel works in a fresh virtualenv
+        run: ./e2e/run.sh python local
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: python/dist
+
+  go:
+    needs: release-please
+    if: needs.release-please.outputs.go == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      # release-please created the go/vX.Y.Z tag that Go modules in a
+      # subdirectory require; ask the module proxy so `go get` sees it at once.
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - run: cd go && go test ./...
+      - env:
+          VERSION: ${{ needs.release-please.outputs.go_version }}
+        run: GOPROXY=https://proxy.golang.org go list -m "github.com/${{ github.repository }}/go@v${VERSION}"
+
+  verify:
+    name: Published ${{ matrix.sdk }} works on staging
+    needs: [release-please, npm, pypi, go]
+    # Runs for each SDK that was published in this release, even when another
+    # SDK in the same push was skipped.
+    if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    environment: staging
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk: [node, python, go]
+    steps:
+      - id: released
+        env:
+          NODE: ${{ needs.release-please.outputs.node == 'true' && needs.release-please.outputs.node_version || '' }}
+          PYTHON: ${{ needs.release-please.outputs.python == 'true' && needs.release-please.outputs.python_version || '' }}
+          GO: ${{ needs.release-please.outputs.go == 'true' && needs.release-please.outputs.go_version || '' }}
+        run: |
+          case "${{ matrix.sdk }}" in
+            node) echo "version=$NODE" >> "$GITHUB_OUTPUT" ;;
+            python) echo "version=$PYTHON" >> "$GITHUB_OUTPUT" ;;
+            go) echo "version=$GO" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - if: steps.released.outputs.version != ''
+        uses: actions/checkout@v4
+      - if: steps.released.outputs.version != '' && matrix.sdk == 'node'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - if: steps.released.outputs.version != '' && matrix.sdk == 'python'
+        uses: astral-sh/setup-uv@v6
+      - if: steps.released.outputs.version != '' && matrix.sdk == 'go'
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - if: steps.released.outputs.version != ''
+        run: ./e2e/run.sh "${{ matrix.sdk }}" "${{ steps.released.outputs.version }}"
+        env:
+          REQUIRE_LIVE: "1"
+          TEMBUILDER_API_KEY: ${{ secrets.SMOKE_API_KEY }}
+          TEMBUILDER_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+          TEMBUILDER_SMOKE_TEMPLATE: ${{ vars.SMOKE_TEMPLATE }}

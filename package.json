@@ -1,0 +1,17 @@
+{
+  "name": "tembuilder-sdk-workspace",
+  "private": true,
+  "description": "Spec tooling for the Tembuilder SDKs. Each language package has its own manifest.",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "spec:lint": "redocly lint openapi/tembuilder.yaml",
+    "spec:mock": "prism mock --errors openapi/tembuilder.yaml"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.82.0",
+    "@stoplight/prism-cli": "5.16.0"
+  }
+}

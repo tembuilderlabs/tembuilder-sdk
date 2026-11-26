@@ -1,0 +1,786 @@
+openapi: 3.0.3
+# Public contract of the Tembuilder API (the API-key /v1 endpoints).
+#
+# Source of truth: tembuilder-be/svr/service-svr/internal/publicapi/openapi.yaml.
+# The backend mounts exactly these operations and its tests validate handler
+# responses against this file. tembuilder-sdk/openapi/tembuilder.yaml is a
+# byte-for-byte copy (`make sync-spec`) that generates the SDKs: never edit the
+# copy. The `public-api` skill describes the whole change workflow.
+#
+# Written as OpenAPI 3.0.3 on purpose: it is the newest version every pinned
+# generator (openapi-typescript, openapi-python-client, oapi-codegen) supports
+# without lossy conversion.
+info:
+  title: Tembuilder API
+  version: 1.0.0
+  description: |
+    Render PDFs from published Tembuilder templates.
+
+    Rendering is asynchronous: `POST /v1/pdf/render` queues a durable job and
+    returns `202` with a `render_id`. Poll `GET /v1/renders/{render_id}` (or
+    subscribe to the `renders.status` webhook) until the status is terminal,
+    then download the PDF.
+
+    Every request authenticates with a project API key sent in the `ApiKey`
+    header. The key alone selects the workspace and project.
+  contact:
+    name: Tembuilder
+    url: https://tembuilder.com/docs/
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: https://api.tembuilder.com
+    description: Production
+security:
+  - ApiKeyAuth: []
+tags:
+  - name: Account
+    description: Inspect the API key in use.
+  - name: Templates
+    description: Discover templates and the input each version accepts.
+  - name: Renders
+    description: Queue PDF renders, follow their status and download the output.
+
+paths:
+  /v1/me:
+    get:
+      operationId: getAccount
+      tags: [Account]
+      summary: Get the current API key
+      description: Returns the project, workspace and scopes of the API key in use. Any valid key may call it.
+      responses:
+        "200":
+          description: The API key's identity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Account"
+              example:
+                api_key_id: 6f1d2c1e-7a55-4c0e-9a0e-3a1f1b2c3d4e
+                workspace_id: 0c8a1d4f-2b3c-4d5e-8f90-a1b2c3d4e5f6
+                project:
+                  id: 9b2e7c1a-3d4f-4a5b-8c6d-7e8f9a0b1c2d
+                  name: Billing
+                  slug: billing
+                scopes: [template:render]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/templates:
+    get:
+      operationId: listTemplates
+      tags: [Templates]
+      summary: List templates
+      description: |
+        Lists the project's templates, most recently updated first. `status`
+        filters by the status of each template's current version; use
+        `published_versions` to see every version you can render.
+        Requires the `template:read` or `template:render` scope.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: status
+          in: query
+          description: Filter by the status of the current version. Omitted means `all`.
+          schema:
+            type: string
+            enum: [all, published, draft]
+        - name: search
+          in: query
+          description: Case-insensitive match on template name or slug.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: A page of templates.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplatePage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/templates/{template_id}:
+    get:
+      operationId: getTemplate
+      tags: [Templates]
+      summary: Get a template and its render input
+      description: |
+        Returns the template, its versions and the input contract of one
+        version: variants, parameter definitions, a JSON Schema for the
+        `parameters` object and an example value. Accepts the template UUID or
+        its slug. Requires the `template:read` or `template:render` scope.
+      parameters:
+        - name: template_id
+          in: path
+          required: true
+          description: Template UUID or project-local slug.
+          schema:
+            type: string
+        - name: version
+          in: query
+          description: Version whose input to describe. Defaults to the current version.
+          schema:
+            type: integer
+            format: int32
+            minimum: 1
+      responses:
+        "200":
+          description: The template.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/pdf/render:
+    post:
+      operationId: createRender
+      tags: [Renders]
+      summary: Queue a PDF render
+      description: |
+        Queues a durable render of a published template version and returns
+        immediately. `202` means the job was accepted, not that a PDF exists
+        or that quota was consumed. Poll `status_url` with a delay and a
+        bounded deadline; a `404` right after acceptance is transitional.
+        Requires the `template:render` scope.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenderRequest"
+            example:
+              template_id: 7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6
+              version: 3
+              variant: compact
+              parameters:
+                customer: Acme Corp
+                total: 1250.5
+      responses:
+        "202":
+          description: Render accepted and queued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderQueued"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/Unavailable"
+
+  /v1/renders:
+    get:
+      operationId: listRenders
+      tags: [Renders]
+      summary: List renders
+      description: |
+        Lists the project's renders, newest first. Render parameters are not
+        returned. Requires the `template:read` or `template:render` scope.
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: status
+          in: query
+          description: Filter by render status. Omitted means `all`.
+          schema:
+            type: string
+            enum: [all, pending, success, failed, quota_exceeded]
+        - name: template_id
+          in: query
+          description: Only renders of this template (UUID).
+          schema:
+            type: string
+            format: uuid
+        - name: started_after
+          in: query
+          description: Only renders started at or after this instant (RFC 3339).
+          schema:
+            type: string
+            format: date-time
+        - name: started_before
+          in: query
+          description: Only renders started at or before this instant (RFC 3339).
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: A page of renders.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderPage"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /v1/renders/{render_id}:
+    get:
+      operationId: getRender
+      tags: [Renders]
+      summary: Get a render's status
+      description: |
+        Returns the lifecycle state of a render. `pending` is still
+        processing; `success`, `failed` and `quota_exceeded` are terminal.
+        Immediately after `202` this can briefly return `404` while the job
+        row is created — retry the same ID with a short delay.
+        Requires the `template:render` scope.
+      parameters:
+        - $ref: "#/components/parameters/RenderId"
+      responses:
+        "200":
+          description: The render's status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RenderStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/renders/{render_id}/download:
+    get:
+      operationId: downloadRender
+      tags: [Renders]
+      summary: Download a render's PDF
+      description: |
+        Streams the PDF of a successful render while it is retained. This is
+        an authenticated endpoint, not a permanent public URL.
+        Requires the `template:render` scope.
+      parameters:
+        - $ref: "#/components/parameters/RenderId"
+      responses:
+        "200":
+          description: The PDF bytes.
+          headers:
+            Content-Disposition:
+              description: Suggested filename, e.g. `attachment; filename="invoice-v3-base-AB12CD.pdf"`.
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: ApiKey
+      description: Project API key created in the Tembuilder app (API keys screen). Shown once at creation.
+
+  # Query defaults are documented in descriptions, not as `default`: the
+  # server applies them, and some generators would otherwise always send them.
+  parameters:
+    Page:
+      name: page
+      in: query
+      description: 1-based page number. Omitted means 1.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 10000
+    PerPage:
+      name: per_page
+      in: query
+      description: Items per page. Omitted means 30.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+    RenderId:
+      name: render_id
+      in: path
+      required: true
+      description: Render ID returned by createRender.
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: The request is invalid. Fix it before retrying.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: COMMON_VALIDATION
+            description: per_page must be an integer between 1 and 100
+            details: []
+    Unauthorized:
+      description: The API key is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: COMMON_UNAUTHENTICATED
+            description: invalid api key
+            details: []
+    Forbidden:
+      description: The key lacks the required scope, or the resource is not renderable (for example an unpublished version).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: PDF_TEMPLATE_VERSION_NOT_PUBLISHED
+            description: template version is not published
+            details: []
+    NotFound:
+      description: The resource does not exist in the key's project.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            code: TEMPLATE_NOT_FOUND
+            description: template not found
+            details: []
+    Unavailable:
+      description: Render capacity is temporarily unavailable. Retry after the `Retry-After` delay.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadGateway:
+      description: The output could not be fetched from storage. Retry later.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    Error:
+      type: object
+      description: Every error response. Branch on `code`; `description` is for humans and logs.
+      required: [code, description, details]
+      properties:
+        code:
+          type: string
+          description: Stable UPPER_SNAKE identifier, e.g. TEMPLATE_NOT_FOUND.
+        description:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+
+    Project:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+
+    Account:
+      type: object
+      required: [api_key_id, workspace_id, project, scopes]
+      properties:
+        api_key_id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        project:
+          $ref: "#/components/schemas/Project"
+        scopes:
+          type: array
+          description: Granted scopes, e.g. template:render, template:read.
+          items:
+            type: string
+
+    Template:
+      type: object
+      required: [id, slug, name, current_version, status, published_versions, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        current_version:
+          type: integer
+          format: int32
+          description: Version rendered when a request omits `version`.
+        status:
+          type: string
+          description: Status of the current version (`published` or `draft`).
+        published_versions:
+          type: array
+          description: Every version that can be rendered, ascending.
+          items:
+            type: integer
+            format: int32
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    TemplateVersion:
+      type: object
+      required: [version, status, schema_version, created_at, updated_at]
+      properties:
+        version:
+          type: integer
+          format: int32
+        status:
+          type: string
+          description: "`published` versions can be rendered."
+        schema_version:
+          type: integer
+          format: int32
+          description: Template document format version.
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    TemplateVariant:
+      type: object
+      required: [name, base]
+      properties:
+        name:
+          type: string
+        base:
+          type: boolean
+          description: True for the variant rendered when a request omits `variant`.
+
+    TemplateInput:
+      type: object
+      description: What one template version accepts at render time.
+      required: [version, variants, parameters, parameters_schema, example_parameters]
+      properties:
+        version:
+          type: integer
+          format: int32
+        variants:
+          type: array
+          items:
+            $ref: "#/components/schemas/TemplateVariant"
+        parameters:
+          type: array
+          description: Parameter definitions exactly as declared in the template (name, type, required, default, fields, itemSchema).
+          items:
+            type: object
+            additionalProperties: true
+        parameters_schema:
+          type: object
+          description: JSON Schema (2020-12) describing the `parameters` object of a render request.
+          additionalProperties: true
+        example_parameters:
+          type: object
+          description: A valid starting value built from defaults, ready to edit.
+          additionalProperties: true
+
+    TemplateDetail:
+      allOf:
+        - $ref: "#/components/schemas/Template"
+        - type: object
+          required: [versions, input]
+          properties:
+            versions:
+              type: array
+              items:
+                $ref: "#/components/schemas/TemplateVersion"
+            input:
+              $ref: "#/components/schemas/TemplateInput"
+
+    TemplatePage:
+      type: object
+      required: [data, page, per_page, has_more]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Template"
+        page:
+          type: integer
+          format: int32
+        per_page:
+          type: integer
+          format: int32
+        has_more:
+          type: boolean
+
+    RenderRequest:
+      type: object
+      required: [template_id]
+      properties:
+        template_id:
+          type: string
+          format: uuid
+          description: Template UUID (slugs are not accepted here).
+        version:
+          type: integer
+          format: int32
+          minimum: 1
+          description: Published version to render. Defaults to the template's current version.
+        variant:
+          type: string
+          description: Variant name. Defaults to the base variant.
+        parameters:
+          type: object
+          description: Input matching the version's `parameters_schema`.
+          additionalProperties: true
+
+    RenderQueued:
+      type: object
+      required: [render_id, status, status_url]
+      properties:
+        render_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [queued]
+        status_url:
+          type: string
+          description: Path of the status endpoint, relative to the API base URL.
+
+    RenderStatus:
+      type: object
+      required: [render_id, status]
+      properties:
+        render_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          description: "`pending`, or a terminal state: `success`, `failed`, `quota_exceeded`."
+        duration_ms:
+          type: integer
+          format: int32
+        error_message:
+          type: string
+        download_url:
+          type: string
+          description: Path of the download endpoint, present when status is `success`.
+
+    Render:
+      type: object
+      required: [id, short_id, status, template_id, template_version, variant, duration_ms, error_message, started_at, completed_at, status_url, download_url]
+      properties:
+        id:
+          type: string
+          format: uuid
+        short_id:
+          type: string
+        status:
+          type: string
+          description: "`pending`, `success`, `failed` or `quota_exceeded`."
+        template_id:
+          type: string
+          format: uuid
+        template_version:
+          type: integer
+          format: int32
+        variant:
+          type: string
+          nullable: true
+        duration_ms:
+          type: integer
+          format: int32
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        status_url:
+          type: string
+        download_url:
+          type: string
+          nullable: true
+
+    RenderPage:
+      type: object
+      required: [data, page, per_page, has_more]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Render"
+        page:
+          type: integer
+          format: int32
+        per_page:
+          type: integer
+          format: int32
+        has_more:
+          type: boolean
+
+    RenderStatusEvent:
+      type: object
+      description: |
+        Body of the `renders.status` webhook. Verify the `Tembuilder-Signature`
+        header against the raw body before parsing (the SDKs provide
+        `verifyWebhook`).
+      required: [api_version, type, occurred_at, data]
+      properties:
+        api_version:
+          type: string
+          example: "2026-09-12"
+        type:
+          type: string
+          enum: [renders.status]
+        occurred_at:
+          type: string
+          format: date-time
+        data:
+          $ref: "#/components/schemas/RenderStatusEventData"
+
+    RenderStatusEventData:
+      type: object
+      required: [render_id, workspace_id, project_id, template_id, template_version, status, started_at, completed_at, duration_ms, links]
+      properties:
+        render_id:
+          type: string
+          format: uuid
+        workspace_id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        template_id:
+          type: string
+          format: uuid
+        template_version:
+          type: integer
+          format: int32
+        variant:
+          type: string
+        status:
+          type: string
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        duration_ms:
+          type: integer
+          format: int32
+        links:
+          type: object
+          required: [status_url]
+          properties:
+            status_url:
+              type: string
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        output:
+          type: object
+          required: [content_type, size_bytes, download_url]
+          properties:
+            content_type:
+              type: string
+            size_bytes:
+              type: integer
+              format: int64
+            download_url:
+              type: string
+
+    WebhookTestEvent:
+      type: object
+      description: Body sent by "Send test" on a webhook endpoint in the app.
+      required: [api_version, type, data]
+      properties:
+        api_version:
+          type: string
+          example: "2026-09-12"
+        type:
+          type: string
+          enum: [webhook.test]
+        data:
+          type: object
+          required: [message]
+          properties:
+            message:
+              type: string

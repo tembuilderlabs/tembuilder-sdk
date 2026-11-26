@@ -1,0 +1,22 @@
+# Spec lint rules. "recommended" plus stricter rules that keep the contract
+# usable by generators and by AI/agent callers: every operation has an ID,
+# summary, description, tag and documented error responses.
+extends:
+  - recommended
+rules:
+  operation-operationId: error
+  operation-summary: error
+  operation-description: error
+  operation-tag-defined: error
+  operation-4xx-response: error
+  operation-2xx-response: error
+  # Webhook payload schemas (RenderStatusEvent) are not referenced by a path
+  # in OpenAPI 3.0 but are part of the contract the SDKs generate types for.
+  no-unused-components: off
+  no-invalid-media-type-examples: error
+  no-server-example.com: error
+  info-license: error
+  security-defined: error
+  tag-description: error
+  operation-singular-tag: error
+  paths-kebab-case: error

@@ -1,0 +1,9 @@
+# openapi-python-client settings. Output goes to src/tembuilder/_generated and
+# is never edited by hand (see scripts/generate.sh at the repo root).
+package_name_override: _generated
+project_name_override: tembuilder-generated
+literal_enums: true
+post_hooks: []
+# The generator parses binary bodies only as application/octet-stream.
+content_type_overrides:
+  application/pdf: application/octet-stream

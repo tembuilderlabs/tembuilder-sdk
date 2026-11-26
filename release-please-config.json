@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "include-component-in-tag": true,
+  "packages": {
+    "node": {
+      "release-type": "node",
+      "component": "node",
+      "package-name": "@tembuilder/sdk",
+      "extra-files": ["src/version.ts"]
+    },
+    "python": {
+      "release-type": "python",
+      "component": "python",
+      "package-name": "tembuilder",
+      "extra-files": ["src/tembuilder/_version.py"]
+    },
+    "go": {
+      "release-type": "go",
+      "component": "go",
+      "extra-files": ["version.go"]
+    }
+  },
+  "tag-separator": "/"
+}

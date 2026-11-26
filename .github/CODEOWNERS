@@ -1,0 +1,4 @@
+# Every change needs a review from the API owners. The spec is the contract
+# with customers; generated code must only change through it.
+*                                   @tembuilderlabs/api-owners
+/openapi/                           @tembuilderlabs/api-owners

@@ -1,0 +1,74 @@
+name: Sync spec
+
+# tembuilder-be owns the public API contract. When it changes on the backend's
+# main (repository_dispatch from tembuilder-be), copy it here, regenerate every
+# SDK and open a PR; that PR runs the full CI (drift, breaking changes,
+# contract cases, all SDK tests, fresh-app e2e). The daily run is a backstop
+# for a missed dispatch. Merging the PR feeds release-please as usual.
+on:
+  repository_dispatch:
+    types: [public-spec-changed]
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-spec
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # Needs the spec-sync GitHub App (CONTRIBUTING.md); a no-op until it exists.
+    if: vars.SPEC_SYNC_APP_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      # An app token (not GITHUB_TOKEN) reads the private backend and lets the
+      # PR it opens trigger CI.
+      - id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SPEC_SYNC_APP_ID }}
+          private-key: ${{ secrets.SPEC_SYNC_APP_PRIVATE_KEY }}
+          owner: tembuilderlabs
+          repositories: tembuilder-be,tembuilder-sdk
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: tembuilderlabs/tembuilder-be
+          token: ${{ steps.app-token.outputs.token }}
+          path: .be
+          sparse-checkout: svr/service-svr/internal/publicapi/openapi.yaml
+          sparse-checkout-cone-mode: false
+      - id: source
+        run: echo "sha=$(git -C .be rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - uses: astral-sh/setup-uv@v6
+      - run: pnpm install --frozen-lockfile
+      - run: cd python && uv sync --frozen
+      - run: make sync-spec BE_SPEC=.be/svr/service-svr/internal/publicapi/openapi.yaml
+      - run: rm -rf .be
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: spec-sync
+          delete-branch: true
+          commit-message: 'feat(api): sync public API contract from tembuilder-be@${{ steps.source.outputs.sha }}'
+          title: 'feat(api): sync public API contract from tembuilder-be'
+          body: |
+            Copies `svr/service-svr/internal/publicapi/openapi.yaml` from tembuilder-be@${{ steps.source.outputs.sha }} and regenerates every SDK (`make sync-spec`).
+
+            Before merging (see the `update-sdk` skill):
+            - Set the PR title type to what changed for SDK users: `feat` (new operation or field), `fix`, `docs`/`chore` (no user-visible change), or `feat!` for a breaking change (also label `breaking-change`).
+            - A new operation fails the contract tests until it has a case in `contract/cases.json` and a wrapper method in the Node, Python and Go clients: push those to this branch.

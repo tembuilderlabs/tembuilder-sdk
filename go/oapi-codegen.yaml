@@ -1,0 +1,9 @@
+# oapi-codegen settings. Output is never edited by hand; regenerate with
+# scripts/generate.sh at the repository root.
+package: api
+output: internal/api/api.gen.go
+generate:
+  models: true
+  client: true
+output-options:
+  skip-prune: true

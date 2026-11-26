@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec:
+    name: Spec lint and breaking changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm spec:lint
+      # tembuilder-be owns the contract; this copy must be identical to its main.
+      # Needs the spec-sync GitHub App (CONTRIBUTING.md); skipped until it exists.
+      - id: app-token
+        if: vars.SPEC_SYNC_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.SPEC_SYNC_APP_ID }}
+          private-key: ${{ secrets.SPEC_SYNC_APP_PRIVATE_KEY }}
+          owner: tembuilderlabs
+          repositories: tembuilder-be
+      - if: vars.SPEC_SYNC_APP_ID != ''
+        uses: actions/checkout@v4
+        with:
+          repository: tembuilderlabs/tembuilder-be
+          token: ${{ steps.app-token.outputs.token }}
+          path: .be
+          sparse-checkout: svr/service-svr/internal/publicapi/openapi.yaml
+          sparse-checkout-cone-mode: false
+      - name: Spec matches the backend contract
+        if: vars.SPEC_SYNC_APP_ID != ''
+        run: make check-spec BE_SPEC=.be/svr/service-svr/internal/publicapi/openapi.yaml
+      - name: Contract cases agree with the spec
+        run: cd scripts/contractcheck && go test ./... && go run . ../../openapi/tembuilder.yaml ../../contract/cases.json
+      - name: Breaking changes against the base branch
+        if: github.event_name == 'pull_request'
+        env:
+          ALLOW_BREAKING: ${{ contains(github.event.pull_request.labels.*.name, 'breaking-change') && '1' || '0' }}
+        run: ./scripts/check-breaking.sh origin/${{ github.base_ref }}
+
+  drift:
+    name: Generated code matches the spec
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - uses: astral-sh/setup-uv@v6
+      - run: pnpm install --frozen-lockfile
+      - run: cd python && uv sync --frozen
+      - run: make check-drift
+
+  node:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cd node && pnpm typecheck && pnpm test && pnpm build && pnpm check:pack
+      - name: Conformance against a Prism mock of the spec
+        run: cd node && pnpm test:conformance
+
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - run: uv sync --frozen
+      - run: uv run --frozen ruff check src tests examples
+      - run: uv run --frozen ruff format --check src tests examples
+      - run: uv run --frozen mypy
+      - run: uv run --frozen pytest --cov
+      - run: uv build
+
+  go:
+    name: Go ${{ matrix.go }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.24", stable]
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test -race -coverprofile=coverage.out ./
+      - run: ../scripts/require-go-coverage.sh coverage.out
+
+  e2e:
+    name: Packages work in fresh apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go/go.mod
+      - run: pnpm install --frozen-lockfile
+      - run: make e2e
