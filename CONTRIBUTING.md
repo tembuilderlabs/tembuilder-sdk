@@ -83,13 +83,18 @@ publishing). Nothing is published from a laptop.
 
 Each release runs `e2e/run.sh <sdk> local` before publishing, then installs
 the exact released version from its registry into a fresh app and renders a
-real PDF on production (`verify` job, `production` environment, a key scoped to a test project). The nightly smoke
-workflow does the same with the latest published versions.
+real PDF on production (`verify` job, `production` environment, a key scoped
+to a test project). The production smoke workflow does the same with the
+latest published versions after every production deploy of a backend service
+or the renderer, and nightly.
 
 ## Spec sync setup
 
-CI reads the private backend and the sync PR must trigger CI, so both use a
-GitHub App of the tembuilderlabs organisation (`spec-sync`), installed on
-`tembuilder-be` and `tembuilder-sdk` with *Contents: read & write* and *Pull
-requests: read & write*. Both repositories need the variable
-`SPEC_SYNC_APP_ID` and the secret `SPEC_SYNC_APP_PRIVATE_KEY`.
+CI reads the private backend, the sync PR must trigger CI, and production
+deploys of `tembuilder-be` services and the `tembuilder-wa` renderer start the
+production smoke test here (`repository_dispatch: production-deployed`). All of
+it uses one GitHub App of the tembuilderlabs organisation (`spec-sync`),
+installed on `tembuilder-be`, `tembuilder-wa` and `tembuilder-sdk` with
+*Contents: read & write* and *Pull requests: read & write*. All three
+repositories need the variable `SPEC_SYNC_APP_ID` and the secret
+`SPEC_SYNC_APP_PRIVATE_KEY`. Until they exist, those steps are skipped.

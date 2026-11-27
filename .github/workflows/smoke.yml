@@ -1,11 +1,21 @@
 name: Production smoke test
 
 # Runs the real render flow against production so a backend that drifts from the
-# spec is caught even when no SDK change is made.
+# spec is caught even when no SDK change is made: after every production deploy
+# of a backend service or the renderer (repository_dispatch from tembuilder-be
+# and tembuilder-wa), and nightly for what no deploy touches (expired keys,
+# DNS, gateway or infrastructure changes).
 on:
+  repository_dispatch:
+    types: [production-deployed]
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
+
+# Several services usually deploy together; only the latest run matters.
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
 
 permissions:
   contents: read

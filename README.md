@@ -51,7 +51,7 @@ Guard rails (all enforced in CI, see [CONTRIBUTING.md](CONTRIBUTING.md)):
 5. 100% coverage of hand-written code in all three languages.
 6. Shared contract suite — every operation has cases that agree with the spec, and the three SDKs must send and parse the same HTTP.
 7. Conformance — the Node SDK runs against a Prism mock that rejects any request violating the spec.
-8. Nightly smoke test against production — the deployed API still matches the spec.
+8. Production smoke test after every backend or renderer deploy, and nightly — the deployed API still matches the published SDKs.
 9. Releases only from CI tags (release-please), npm provenance and PyPI trusted publishing.
 
 ## License
