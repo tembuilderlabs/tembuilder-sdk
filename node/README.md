@@ -29,6 +29,74 @@ const pdf = await tembuilder.renders.download(render.render_id)
 await writeFile(pdf.filename ?? 'output.pdf', pdf.bytes)
 ```
 
+## Rendering: pick the flow that fits
+
+A render is a background job. `renders.create` returns a `render_id` within
+milliseconds; the PDF is produced afterwards. No call keeps a connection open
+while the PDF renders, so choose by where your code runs:
+
+| Flow | Use it for |
+| --- | --- |
+| 1. Create, then wait | Scripts, CLIs, cron jobs |
+| 2. Create now, check later | Web requests and queues: store the id, return at once |
+| 3. Create, get a webhook | Servers: Tembuilder calls you when the render ends |
+
+### 1. Create, then wait
+
+`createAndWait` = `create` + `waitFor`. It polls the status every second
+(`pollIntervalMs`) for up to two minutes (`timeoutMs`).
+
+```ts
+const status = await tembuilder.renders.createAndWait(
+  { template_id: template.id, parameters: { customer: 'Acme Corp' } },
+  { pollIntervalMs: 2_000, timeoutMs: 60_000 },
+)
+const pdf = await tembuilder.renders.download(status.render_id)
+```
+
+Already have a `render_id`? `await tembuilder.renders.waitFor(renderId)`.
+
+### 2. Create now, check later
+
+```ts
+// In the request handler: queue the render and answer immediately.
+const { render_id } = await tembuilder.renders.create({
+  template_id: template.id,
+  parameters: { customer: 'Acme Corp' },
+})
+await db.orders.update(orderId, { renderId: render_id }) // keep the id
+
+// Later (another request, a job, a "check status" button):
+const status = await tembuilder.renders.get(render_id)
+switch (status.status) {
+  case 'pending':
+    break // not ready yet: check again later
+  case 'success': {
+    const pdf = await tembuilder.renders.download(render_id)
+    await writeFile(pdf.filename ?? 'output.pdf', pdf.bytes)
+    break
+  }
+  default: // 'failed' or 'quota_exceeded'
+    console.error(status.status, status.error_message)
+}
+```
+
+Right after `create`, `renders.get` can answer `404` for a moment while the
+job is being registered; treat it like `pending`. `renders.list({ status:
+'pending' })` returns every render still running.
+
+### 3. Create, get a webhook
+
+Add a webhook endpoint in the Tembuilder app (**Webhooks** in the project sidebar), then
+create renders as in flow 2 and download when the `renders.status` event
+arrives (see [Webhooks](#webhooks)):
+
+```ts
+if (event.type === 'renders.status' && event.data.status === 'success') {
+  const pdf = await tembuilder.renders.download(event.data.render_id)
+}
+```
+
 ## API
 
 | Call | HTTP |
