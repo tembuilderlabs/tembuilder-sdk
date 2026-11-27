@@ -80,3 +80,9 @@ if event["type"] == "renders.status":
 ```
 
 Pass the raw body bytes. Timestamps outside ±300 s are rejected.
+
+## Versioning
+
+The SDK follows [Semantic Versioning](https://semver.org). Before 1.0, a minor
+release may contain breaking changes; patch releases never do. Each release
+is tagged in this repository and listed in the changelog.

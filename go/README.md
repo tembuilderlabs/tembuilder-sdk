@@ -79,3 +79,9 @@ if event.Type == "renders.status" {
 	_ = json.Unmarshal(event.Data, &data)
 }
 ```
+
+## Versioning
+
+The SDK follows [Semantic Versioning](https://semver.org). Before 1.0, a minor
+release may contain breaking changes; patch releases never do. Each release
+is tagged in this repository and listed in the changelog.
