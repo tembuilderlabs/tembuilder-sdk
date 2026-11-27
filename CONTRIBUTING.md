@@ -76,7 +76,7 @@ what changed.
 
 ## Releasing
 
-Merging to `main` lets release-please open one release PR per package.
+Merging to `main` lets release-please open one release PR covering every changed package (each still gets its own version, tag and changelog).
 Merging that PR tags `node/vX`, `python/vX` or `go/vX` and the release
 workflow publishes from CI (npm with provenance, PyPI via trusted
 publishing). Nothing is published from a laptop.
