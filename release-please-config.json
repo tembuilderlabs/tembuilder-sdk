@@ -7,18 +7,26 @@
       "release-type": "node",
       "component": "node",
       "package-name": "@tembuilderlabs/sdk",
-      "extra-files": ["src/version.ts"]
+      "extra-files": [
+        "src/version.ts"
+      ]
     },
     "python": {
       "release-type": "python",
       "component": "python",
       "package-name": "tembuilder",
-      "extra-files": ["src/tembuilder/_version.py"]
+      "extra-files": [
+        "src/tembuilder/_version.py"
+      ],
+      "release-as": "0.1.0"
     },
     "go": {
       "release-type": "go",
       "component": "go",
-      "extra-files": ["version.go"]
+      "extra-files": [
+        "version.go"
+      ],
+      "release-as": "0.1.0"
     }
   },
   "tag-separator": "/"
