@@ -1,6 +1,6 @@
 {
   "name": "@tembuilderlabs/sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Official Node.js and TypeScript SDK for the Tembuilder PDF rendering API.",
   "license": "MIT",
   "homepage": "https://tembuilder.com/pdf-generation-api/",
@@ -10,7 +10,14 @@
     "directory": "node"
   },
   "bugs": "https://github.com/tembuilderlabs/tembuilder-sdk/issues",
-  "keywords": ["tembuilder", "pdf", "pdf-generation", "templates", "api", "sdk"],
+  "keywords": [
+    "tembuilder",
+    "pdf",
+    "pdf-generation",
+    "templates",
+    "api",
+    "sdk"
+  ],
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -32,7 +39,11 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "publishConfig": {
     "access": "public",
     "provenance": true
