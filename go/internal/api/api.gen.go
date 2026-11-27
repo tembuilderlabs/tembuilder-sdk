@@ -196,10 +196,18 @@ type RenderRequest struct {
 // RenderStatus defines model for RenderStatus.
 type RenderStatus struct {
 	// DownloadUrl Path of the download endpoint, present when status is `success`.
-	DownloadUrl  *string            `json:"download_url,omitempty"`
-	DurationMs   *int32             `json:"duration_ms,omitempty"`
-	ErrorMessage *string            `json:"error_message,omitempty"`
-	RenderId     openapi_types.UUID `json:"render_id"`
+	DownloadUrl  *string `json:"download_url,omitempty"`
+	DurationMs   *int32  `json:"duration_ms,omitempty"`
+	ErrorMessage *string `json:"error_message,omitempty"`
+
+	// FileUrl Signed URL that serves the PDF directly from storage, present when
+	// status is `success`. Send no API key to it. Valid until
+	// `file_url_expires_at`; fetch the status again for a fresh one.
+	FileUrl *string `json:"file_url,omitempty"`
+
+	// FileUrlExpiresAt When `file_url` stops working (15 minutes after this response).
+	FileUrlExpiresAt *time.Time         `json:"file_url_expires_at,omitempty"`
+	RenderId         openapi_types.UUID `json:"render_id"`
 
 	// Status `pending`, or a terminal state: `success`, `failed`, `quota_exceeded`.
 	Status string `json:"status"`
