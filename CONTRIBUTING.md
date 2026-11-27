@@ -83,7 +83,7 @@ publishing). Nothing is published from a laptop.
 
 Each release runs `e2e/run.sh <sdk> local` before publishing, then installs
 the exact released version from its registry into a fresh app and renders a
-real PDF on staging (`verify` job, `staging` environment). The nightly smoke
+real PDF on production (`verify` job, `production` environment, a key scoped to a test project). The nightly smoke
 workflow does the same with the latest published versions.
 
 ## Spec sync setup

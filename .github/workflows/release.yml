@@ -7,7 +7,7 @@ name: Release
 # Every SDK is checked twice as a user would get it (e2e/run.sh):
 #   1. before publishing: the built package installed into a fresh app;
 #   2. after publishing: the exact released version installed from npm, PyPI
-#      or the Go proxy into a fresh app, rendering a real PDF on staging.
+#      or the Go proxy into a fresh app, rendering a real PDF on production with a dedicated test project key.
 on:
   push:
     branches: [main]
@@ -93,13 +93,13 @@ jobs:
         run: GOPROXY=https://proxy.golang.org go list -m "github.com/${{ github.repository }}/go@v${VERSION}"
 
   verify:
-    name: Published ${{ matrix.sdk }} works on staging
+    name: Published ${{ matrix.sdk }} works on production
     needs: [release-please, npm, pypi, go]
     # Runs for each SDK that was published in this release, even when another
     # SDK in the same push was skipped.
     if: ${{ always() && !cancelled() && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
-    environment: staging
+    environment: production
     strategy:
       fail-fast: false
       matrix:

@@ -45,6 +45,6 @@ Never edit the copy or the generated directories (`node/src/generated`,
    `feat!` + label `breaking-change` for a major. On GitHub the `sync-spec`
    workflow opens this PR automatically (title defaults to `feat(api)`; adjust
    it before merging). Merging feeds release-please; releases publish and then
-   verify the published packages on staging.
+   verify the published packages against production.
 5. Hand off to `tembuilder-wa/.agents/skills/public-api` for the API reference
    docs.
