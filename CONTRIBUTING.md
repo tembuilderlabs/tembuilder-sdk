@@ -86,7 +86,7 @@ the exact released version from its registry into a fresh app and renders a
 real PDF on production (`verify` job, `production` environment, a key scoped
 to a test project). The production smoke workflow does the same with the
 latest published versions after every production deploy of a backend service
-or the renderer, and nightly.
+or the renderer; run it by hand after infrastructure changes no deploy carries.
 
 ## Spec sync setup
 
