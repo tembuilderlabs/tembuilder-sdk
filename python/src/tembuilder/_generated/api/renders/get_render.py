@@ -73,6 +73,12 @@ def sync_detailed(
     processing; `success`, `failed` and `quota_exceeded` are terminal.
     Immediately after `202` this can briefly return `404` while the job
     row is created — retry the same ID with a short delay.
+
+    Once the render succeeded, `file_url` is a signed link that serves
+    the PDF directly from storage for 15 minutes (`file_url_expires_at`).
+    Fetch it without the API key — it carries its own signature — and
+    call this endpoint again for a fresh link after it expires.
+    `download_url` serves the same file through the API.
     Requires the `template:render` scope.
 
     Args:
@@ -108,6 +114,12 @@ def sync(
     processing; `success`, `failed` and `quota_exceeded` are terminal.
     Immediately after `202` this can briefly return `404` while the job
     row is created — retry the same ID with a short delay.
+
+    Once the render succeeded, `file_url` is a signed link that serves
+    the PDF directly from storage for 15 minutes (`file_url_expires_at`).
+    Fetch it without the API key — it carries its own signature — and
+    call this endpoint again for a fresh link after it expires.
+    `download_url` serves the same file through the API.
     Requires the `template:render` scope.
 
     Args:
@@ -138,6 +150,12 @@ async def asyncio_detailed(
     processing; `success`, `failed` and `quota_exceeded` are terminal.
     Immediately after `202` this can briefly return `404` while the job
     row is created — retry the same ID with a short delay.
+
+    Once the render succeeded, `file_url` is a signed link that serves
+    the PDF directly from storage for 15 minutes (`file_url_expires_at`).
+    Fetch it without the API key — it carries its own signature — and
+    call this endpoint again for a fresh link after it expires.
+    `download_url` serves the same file through the API.
     Requires the `template:render` scope.
 
     Args:
@@ -171,6 +189,12 @@ async def asyncio(
     processing; `success`, `failed` and `quota_exceeded` are terminal.
     Immediately after `202` this can briefly return `404` while the job
     row is created — retry the same ID with a short delay.
+
+    Once the render succeeded, `file_url` is a signed link that serves
+    the PDF directly from storage for 15 minutes (`file_url_expires_at`).
+    Fetch it without the API key — it carries its own signature — and
+    call this endpoint again for a fresh link after it expires.
+    `download_url` serves the same file through the API.
     Requires the `template:render` scope.
 
     Args:

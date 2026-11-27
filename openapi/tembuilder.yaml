@@ -19,7 +19,9 @@ info:
     Rendering is asynchronous: `POST /v1/pdf/render` queues a durable job and
     returns `202` with a `render_id`. Poll `GET /v1/renders/{render_id}` (or
     subscribe to the `renders.status` webhook) until the status is terminal,
-    then download the PDF.
+    then download the PDF from the signed `file_url` in that status. No
+    request waits for a render to finish, so store the `render_id` and check
+    back whenever suits your application.
 
     Every request authenticates with a project API key sent in the `ApiKey`
     header. The key alone selects the workspace and project.
@@ -256,6 +258,12 @@ paths:
         processing; `success`, `failed` and `quota_exceeded` are terminal.
         Immediately after `202` this can briefly return `404` while the job
         row is created — retry the same ID with a short delay.
+
+        Once the render succeeded, `file_url` is a signed link that serves
+        the PDF directly from storage for 15 minutes (`file_url_expires_at`).
+        Fetch it without the API key — it carries its own signature — and
+        call this endpoint again for a fresh link after it expires.
+        `download_url` serves the same file through the API.
         Requires the `template:render` scope.
       parameters:
         - $ref: "#/components/parameters/RenderId"
@@ -280,7 +288,9 @@ paths:
       summary: Download a render's PDF
       description: |
         Streams the PDF of a successful render while it is retained. This is
-        an authenticated endpoint, not a permanent public URL.
+        an authenticated endpoint, not a permanent public URL. To download
+        without passing the file through the API, use the signed `file_url`
+        from `GET /v1/renders/{render_id}` instead.
         Requires the `template:render` scope.
       parameters:
         - $ref: "#/components/parameters/RenderId"
@@ -630,6 +640,17 @@ components:
         download_url:
           type: string
           description: Path of the download endpoint, present when status is `success`.
+        file_url:
+          type: string
+          format: uri
+          description: |
+            Signed URL that serves the PDF directly from storage, present when
+            status is `success`. Send no API key to it. Valid until
+            `file_url_expires_at`; fetch the status again for a fresh one.
+        file_url_expires_at:
+          type: string
+          format: date-time
+          description: When `file_url` stops working (15 minutes after this response).
 
     Render:
       type: object

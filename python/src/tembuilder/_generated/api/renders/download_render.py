@@ -73,7 +73,9 @@ def sync_detailed(
     """Download a render's PDF
 
      Streams the PDF of a successful render while it is retained. This is
-    an authenticated endpoint, not a permanent public URL.
+    an authenticated endpoint, not a permanent public URL. To download
+    without passing the file through the API, use the signed `file_url`
+    from `GET /v1/renders/{render_id}` instead.
     Requires the `template:render` scope.
 
     Args:
@@ -106,7 +108,9 @@ def sync(
     """Download a render's PDF
 
      Streams the PDF of a successful render while it is retained. This is
-    an authenticated endpoint, not a permanent public URL.
+    an authenticated endpoint, not a permanent public URL. To download
+    without passing the file through the API, use the signed `file_url`
+    from `GET /v1/renders/{render_id}` instead.
     Requires the `template:render` scope.
 
     Args:
@@ -134,7 +138,9 @@ async def asyncio_detailed(
     """Download a render's PDF
 
      Streams the PDF of a successful render while it is retained. This is
-    an authenticated endpoint, not a permanent public URL.
+    an authenticated endpoint, not a permanent public URL. To download
+    without passing the file through the API, use the signed `file_url`
+    from `GET /v1/renders/{render_id}` instead.
     Requires the `template:render` scope.
 
     Args:
@@ -165,7 +171,9 @@ async def asyncio(
     """Download a render's PDF
 
      Streams the PDF of a successful render while it is retained. This is
-    an authenticated endpoint, not a permanent public URL.
+    an authenticated endpoint, not a permanent public URL. To download
+    without passing the file through the API, use the signed `file_url`
+    from `GET /v1/renders/{render_id}` instead.
     Requires the `template:render` scope.
 
     Args:

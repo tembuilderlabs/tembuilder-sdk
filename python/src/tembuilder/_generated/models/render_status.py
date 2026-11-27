@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from collections.abc import Mapping
 from typing import Any, TypeVar
 from uuid import UUID
@@ -21,6 +22,10 @@ class RenderStatus:
         duration_ms (int | Unset):
         error_message (str | Unset):
         download_url (str | Unset): Path of the download endpoint, present when status is `success`.
+        file_url (str | Unset): Signed URL that serves the PDF directly from storage, present when
+            status is `success`. Send no API key to it. Valid until
+            `file_url_expires_at`; fetch the status again for a fresh one.
+        file_url_expires_at (datetime.datetime | Unset): When `file_url` stops working (15 minutes after this response).
     """
 
     render_id: UUID
@@ -28,6 +33,8 @@ class RenderStatus:
     duration_ms: int | Unset = UNSET
     error_message: str | Unset = UNSET
     download_url: str | Unset = UNSET
+    file_url: str | Unset = UNSET
+    file_url_expires_at: datetime.datetime | Unset = UNSET
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -40,6 +47,12 @@ class RenderStatus:
         error_message = self.error_message
 
         download_url = self.download_url
+
+        file_url = self.file_url
+
+        file_url_expires_at: str | Unset = UNSET
+        if not isinstance(self.file_url_expires_at, Unset):
+            file_url_expires_at = self.file_url_expires_at.isoformat()
 
         field_dict: dict[str, Any] = {}
         field_dict.update(self.additional_properties)
@@ -55,6 +68,10 @@ class RenderStatus:
             field_dict["error_message"] = error_message
         if download_url is not UNSET:
             field_dict["download_url"] = download_url
+        if file_url is not UNSET:
+            field_dict["file_url"] = file_url
+        if file_url_expires_at is not UNSET:
+            field_dict["file_url_expires_at"] = file_url_expires_at
 
         return field_dict
 
@@ -71,12 +88,23 @@ class RenderStatus:
 
         download_url = d.pop("download_url", UNSET)
 
+        file_url = d.pop("file_url", UNSET)
+
+        _file_url_expires_at = d.pop("file_url_expires_at", UNSET)
+        file_url_expires_at: datetime.datetime | Unset
+        if isinstance(_file_url_expires_at, Unset):
+            file_url_expires_at = UNSET
+        else:
+            file_url_expires_at = datetime.datetime.fromisoformat(_file_url_expires_at)
+
         render_status = cls(
             render_id=render_id,
             status=status,
             duration_ms=duration_ms,
             error_message=error_message,
             download_url=download_url,
+            file_url=file_url,
+            file_url_expires_at=file_url_expires_at,
         )
 
         render_status.additional_properties = d

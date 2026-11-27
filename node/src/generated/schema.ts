@@ -128,6 +128,12 @@ export interface paths {
          *     processing; `success`, `failed` and `quota_exceeded` are terminal.
          *     Immediately after `202` this can briefly return `404` while the job
          *     row is created — retry the same ID with a short delay.
+         *
+         *     Once the render succeeded, `file_url` is a signed link that serves
+         *     the PDF directly from storage for 15 minutes (`file_url_expires_at`).
+         *     Fetch it without the API key — it carries its own signature — and
+         *     call this endpoint again for a fresh link after it expires.
+         *     `download_url` serves the same file through the API.
          *     Requires the `template:render` scope.
          */
         get: operations["getRender"];
@@ -149,7 +155,9 @@ export interface paths {
         /**
          * Download a render's PDF
          * @description Streams the PDF of a successful render while it is retained. This is
-         *     an authenticated endpoint, not a permanent public URL.
+         *     an authenticated endpoint, not a permanent public URL. To download
+         *     without passing the file through the API, use the signed `file_url`
+         *     from `GET /v1/renders/{render_id}` instead.
          *     Requires the `template:render` scope.
          */
         get: operations["downloadRender"];
@@ -292,6 +300,18 @@ export interface components {
             error_message?: string;
             /** @description Path of the download endpoint, present when status is `success`. */
             download_url?: string;
+            /**
+             * Format: uri
+             * @description Signed URL that serves the PDF directly from storage, present when
+             *     status is `success`. Send no API key to it. Valid until
+             *     `file_url_expires_at`; fetch the status again for a fresh one.
+             */
+            file_url?: string;
+            /**
+             * Format: date-time
+             * @description When `file_url` stops working (15 minutes after this response).
+             */
+            file_url_expires_at?: string;
         };
         Render: {
             /** Format: uuid */
