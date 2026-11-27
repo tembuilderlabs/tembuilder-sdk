@@ -13,7 +13,7 @@ export async function quickstart(): Promise<void> {
     template_id: template.id,
     parameters: { ...template.input.example_parameters, customer: 'Acme Corp' },
   })
-  const pdf = await tembuilder.renders.download(render.render_id)
+  const pdf = await tembuilder.renders.download(render)
   await writeFile(pdf.filename ?? 'output.pdf', pdf.bytes)
 }
 

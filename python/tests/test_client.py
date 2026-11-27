@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from typing import Any
 
 import httpx
@@ -17,6 +18,7 @@ from tembuilder import (
     __version__,
     filename_from_disposition,
 )
+from tembuilder._generated.models.render_status import RenderStatus
 
 RENDER = "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
 TEMPLATE = "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6"
@@ -139,6 +141,99 @@ class TestDownload:
         recorder = Recorder(lambda _r: response)
         file = make_client(recorder).renders.download(RENDER)
         assert (file.content, file.content_type, file.filename) == (b"%P", "application/pdf", None)
+
+
+FILE_URL = "https://storage.test/user-data/renders/out.pdf?X-Amz-Signature=sig"
+API_DOWNLOAD = f"https://api.test/v1/renders/{RENDER}/download"
+
+
+def pdf_response(_request: httpx.Request) -> httpx.Response:
+    return httpx.Response(
+        200,
+        content=b"%PDF",
+        headers={
+            "content-type": "application/pdf",
+            "content-disposition": 'attachment; filename="inv-v3-base-ab12.pdf"',
+        },
+    )
+
+
+def success(**fields: Any) -> RenderStatus:
+    body: dict[str, Any] = {"render_id": RENDER, "status": "success", "download_url": f"/v1/renders/{RENDER}/download"}
+    return RenderStatus.from_dict({**body, **fields})
+
+
+def in_minutes(minutes: float) -> str:
+    return (datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=minutes)).isoformat()
+
+
+def unreachable(request: httpx.Request) -> httpx.Response:
+    raise httpx.ConnectError("unreachable", request=request)
+
+
+class TestDownloadSignedFile:
+    def test_fetches_from_storage_without_the_api_key(self) -> None:
+        recorder = Recorder(pdf_response)
+        file = make_client(recorder).renders.download(success(file_url=FILE_URL, file_url_expires_at=in_minutes(15)))
+        assert [str(r.url) for r in recorder.requests] == [FILE_URL]
+        assert "apikey" not in recorder.requests[0].headers
+        assert recorder.requests[0].headers["user-agent"].startswith("tembuilder-python/")
+        assert (file.content, file.content_type, file.filename) == (b"%PDF", "application/pdf", "inv-v3-base-ab12.pdf")
+
+    def test_retries_storage_like_any_get(self) -> None:
+        recorder = Recorder(lambda _r: httpx.Response(503), pdf_response)
+        client = make_client(recorder, max_retries=1, retry_base_delay=0.001)
+        file = client.renders.download(success(file_url=FILE_URL, file_url_expires_at=in_minutes(15)))
+        assert [str(r.url) for r in recorder.requests] == [FILE_URL, FILE_URL]
+        assert file.filename == "inv-v3-base-ab12.pdf"
+
+    @pytest.mark.parametrize("storage", [lambda _r: httpx.Response(403, text="<Error/>"), unreachable])
+    def test_falls_back_to_the_api_when_storage_refuses_or_fails(self, storage: Any) -> None:
+        recorder = Recorder(storage, pdf_response)
+        file = make_client(recorder).renders.download(success(file_url=FILE_URL, file_url_expires_at=in_minutes(15)))
+        assert [str(r.url) for r in recorder.requests] == [FILE_URL, API_DOWNLOAD]
+        assert recorder.requests[1].headers["apikey"] == "test-key"
+        assert file.content == b"%PDF"
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            {"file_url": FILE_URL, "file_url_expires_at": in_minutes(0.05)},  # about to expire
+            {},  # older API, or signing unavailable
+        ],
+    )
+    def test_uses_the_api_without_a_usable_link(self, fields: dict[str, Any]) -> None:
+        recorder = Recorder(pdf_response)
+        make_client(recorder).renders.download(success(**fields))
+        assert [str(r.url) for r in recorder.requests] == [API_DOWNLOAD]
+
+    def test_trusts_a_link_without_expiry_and_a_naive_expiry_as_utc(self) -> None:
+        naive = (datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=15)).replace(tzinfo=None).isoformat()
+        for fields in ({"file_url": FILE_URL}, {"file_url": FILE_URL, "file_url_expires_at": naive}):
+            recorder = Recorder(pdf_response)
+            make_client(recorder).renders.download(success(**fields))
+            assert [str(r.url) for r in recorder.requests] == [FILE_URL]
+
+    @pytest.mark.anyio
+    async def test_async_fetches_from_storage_and_falls_back(self) -> None:
+        recorder = Recorder(pdf_response)
+        async with make_async_client(recorder) as client:
+            file = await client.renders.download(success(file_url=FILE_URL, file_url_expires_at=in_minutes(15)))
+        assert [str(r.url) for r in recorder.requests] == [FILE_URL]
+        assert "apikey" not in recorder.requests[0].headers
+        assert file.filename == "inv-v3-base-ab12.pdf"
+
+        for storage in (lambda _r: httpx.Response(403), unreachable):
+            recorder = Recorder(storage, pdf_response)
+            async with make_async_client(recorder) as client:
+                await client.renders.download(success(file_url=FILE_URL, file_url_expires_at=in_minutes(15)))
+            assert [str(r.url) for r in recorder.requests] == [FILE_URL, API_DOWNLOAD]
+
+        recorder = Recorder(pdf_response)
+        async with make_async_client(recorder) as client:
+            await client.renders.download(success())
+            await client.renders.download(RENDER)
+        assert [str(r.url) for r in recorder.requests] == [API_DOWNLOAD, API_DOWNLOAD]
 
 
 class TestWait:

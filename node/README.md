@@ -20,12 +20,12 @@ const tembuilder = new Tembuilder({ apiKey: process.env.TEMBUILDER_API_KEY })
 const template = await tembuilder.templates.get('invoice')
 console.log(template.input.parameters_schema, template.input.example_parameters)
 
-// Render and wait for the result.
-const render = await tembuilder.renders.createAndWait({
+// Render, wait for the result and download the PDF.
+const status = await tembuilder.renders.createAndWait({
   template_id: template.id,
   parameters: { ...template.input.example_parameters, customer: 'Acme Corp' },
 })
-const pdf = await tembuilder.renders.download(render.render_id)
+const pdf = await tembuilder.renders.download(status)
 await writeFile(pdf.filename ?? 'output.pdf', pdf.bytes)
 ```
 
@@ -51,7 +51,7 @@ const status = await tembuilder.renders.createAndWait(
   { template_id: template.id, parameters: { customer: 'Acme Corp' } },
   { pollIntervalMs: 2_000, timeoutMs: 60_000 },
 )
-const pdf = await tembuilder.renders.download(status.render_id)
+const pdf = await tembuilder.renders.download(status)
 ```
 
 Already have a `render_id`? `await tembuilder.renders.waitFor(renderId)`.
@@ -72,7 +72,7 @@ switch (status.status) {
   case 'pending':
     break // not ready yet: check again later
   case 'success': {
-    const pdf = await tembuilder.renders.download(render_id)
+    const pdf = await tembuilder.renders.download(status)
     await writeFile(pdf.filename ?? 'output.pdf', pdf.bytes)
     break
   }
@@ -93,9 +93,21 @@ arrives (see [Webhooks](#webhooks)):
 
 ```ts
 if (event.type === 'renders.status' && event.data.status === 'success') {
-  const pdf = await tembuilder.renders.download(event.data.render_id)
+  const status = await tembuilder.renders.get(event.data.render_id)
+  const pdf = await tembuilder.renders.download(status)
 }
 ```
+
+### Downloading the PDF
+
+Pass the **status** (from `get`, `waitFor` or `createAndWait`) to
+`renders.download`. A successful status carries `file_url`, a signed link
+that serves the PDF straight from storage for 15 minutes
+(`file_url_expires_at`): the SDK fetches it without your API key and the file
+never passes through the API. When the link is missing, about to expire or
+refused, the SDK downloads through `GET /v1/renders/{id}/download` instead.
+`renders.download(renderId)` always uses that endpoint. Need the PDF later?
+Call `renders.get(id)` again for a fresh link.
 
 ## API
 
@@ -107,6 +119,7 @@ if (event.type === 'renders.status' && event.data.status === 'success') {
 | `renders.create(request)` | `POST /v1/pdf/render` |
 | `renders.get(renderId)` | `GET /v1/renders/{id}` |
 | `renders.list(params)` / `renders.listAll(params)` | `GET /v1/renders` |
+| `renders.download(status)` | signed `file_url`, falling back to the row below |
 | `renders.download(renderId)` | `GET /v1/renders/{id}/download` |
 | `renders.waitFor(renderId, options)` / `renders.createAndWait(request, options)` | polling |
 

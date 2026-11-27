@@ -107,6 +107,60 @@ describe('renders.download', () => {
   })
 })
 
+describe('renders.download(status) via the signed file_url', () => {
+  const FILE_URL = 'https://storage.test/user-data/renders/out.pdf?X-Amz-Signature=sig'
+  const pdf = (headers: Record<string, string> = {}) =>
+    new Response(new Uint8Array([37, 80, 68, 70]), {
+      status: 200,
+      headers: { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="invoice-v3-base-ab12.pdf"', ...headers },
+    })
+  const statusWith = (fields: Record<string, unknown>) => ({ render_id: RENDER, status: 'success', download_url: `/v1/renders/${RENDER}/download`, ...fields })
+  const fresh = () => new Date(Date.now() + 15 * 60_000).toISOString()
+
+  it('fetches the PDF straight from storage, without the API key', async () => {
+    const { fetch, requests } = fakeFetch(() => pdf())
+    const file = await client(fetch).renders.download(statusWith({ file_url: FILE_URL, file_url_expires_at: fresh() }))
+    expect(requests).toHaveLength(1)
+    expect(requests[0].url).toBe(FILE_URL)
+    expect(requests[0].headers.get('ApiKey')).toBeNull()
+    expect(requests[0].headers.get('User-Agent')).toMatch(/^tembuilder-node\//)
+    expect(file).toEqual({ bytes: new Uint8Array([37, 80, 68, 70]), contentType: 'application/pdf', filename: 'invoice-v3-base-ab12.pdf' })
+  })
+
+  it('retries storage like any GET', async () => {
+    const { fetch, requests } = fakeFetch(() => new Response('busy', { status: 503 }), () => pdf())
+    const file = await client(fetch, { maxRetries: 1 }).renders.download(statusWith({ file_url: FILE_URL, file_url_expires_at: fresh() }))
+    expect(requests.map((r) => r.url)).toEqual([FILE_URL, FILE_URL])
+    expect(file.filename).toBe('invoice-v3-base-ab12.pdf')
+  })
+
+  it.each([
+    ['refused by storage (e.g. expired signature)', () => new Response('<Error/>', { status: 403 })],
+    ['unreachable storage', () => Promise.reject(new TypeError('fetch failed'))],
+  ])('falls back to the API endpoint when the link is %s', async (_name, storage) => {
+    const { fetch, requests } = fakeFetch(storage as () => Response, () => pdf())
+    const file = await client(fetch).renders.download(statusWith({ file_url: FILE_URL, file_url_expires_at: fresh() }))
+    expect(requests.map((r) => r.url)).toEqual([FILE_URL, `https://api.test/v1/renders/${RENDER}/download`])
+    expect(requests[1].headers.get('ApiKey')).toBe('test-key')
+    expect(file.bytes).toEqual(new Uint8Array([37, 80, 68, 70]))
+  })
+
+  it.each([
+    ['about to expire', { file_url: FILE_URL, file_url_expires_at: new Date(Date.now() + 5_000).toISOString() }],
+    ['missing (older API or signing unavailable)', {}],
+  ])('uses the API endpoint when the link is %s', async (_name, fields) => {
+    const { fetch, requests } = fakeFetch(() => pdf())
+    await client(fetch).renders.download(statusWith(fields))
+    expect(requests.map((r) => r.url)).toEqual([`https://api.test/v1/renders/${RENDER}/download`])
+  })
+
+  it('trusts a link without an expiry', async () => {
+    const { fetch, requests } = fakeFetch(() => pdf())
+    await client(fetch).renders.download(statusWith({ file_url: FILE_URL }))
+    expect(requests.map((r) => r.url)).toEqual([FILE_URL])
+  })
+})
+
 describe('renders.waitFor / createAndWait', () => {
   it('treats an early 404 as transitional, then polls pending until success', async () => {
     const { fetch, requests } = fakeFetch(notFound, status('pending'), status('success', { download_url: '/d' }))

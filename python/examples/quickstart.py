@@ -15,7 +15,7 @@ def quickstart() -> None:
         example = template.input_.example_parameters.to_dict()
 
         status = client.renders.create_and_wait(template.id, parameters={**example, "customer": "Acme Corp"})
-        pdf = client.renders.download(str(status.render_id))
+        pdf = client.renders.download(status)
         Path(pdf.filename or "output.pdf").write_bytes(pdf.content)
 
 

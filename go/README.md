@@ -31,7 +31,7 @@ status, err := client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{
 if err != nil {
 	return err
 }
-file, err := client.Renders.Download(ctx, status.RenderId.String())
+file, err := client.Renders.DownloadFrom(ctx, status)
 if err != nil {
 	return err
 }
@@ -74,7 +74,7 @@ status, err := client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{
 if err != nil {
 	return err
 }
-file, err := client.Renders.Download(ctx, status.RenderId.String())
+file, err := client.Renders.DownloadFrom(ctx, status)
 ```
 
 Already have a render id? `client.Renders.WaitFor(ctx, renderID, tembuilder.WaitOptions{})`.
@@ -101,7 +101,7 @@ switch status.Status {
 case tembuilder.RenderStatusPending:
 	// not ready yet: check again later
 case tembuilder.RenderStatusSuccess:
-	file, err := client.Renders.Download(ctx, renderID)
+	file, err := client.Renders.DownloadFrom(ctx, status)
 	if err != nil {
 		return err
 	}
@@ -124,9 +124,24 @@ arrives (see [Webhooks](#webhooks)):
 
 ```go
 if event.Type == "renders.status" && data.Status == tembuilder.RenderStatusSuccess {
-	file, err := client.Renders.Download(ctx, data.RenderId.String())
+	status, err := client.Renders.Get(ctx, data.RenderId.String())
+	if err != nil {
+		return err
+	}
+	file, err := client.Renders.DownloadFrom(ctx, status)
 }
 ```
+
+### Downloading the PDF
+
+Use `Renders.DownloadFrom(ctx, status)` with the status from `Get`, `WaitFor`
+or `CreateAndWait`. A successful status carries `FileUrl`, a signed link that
+serves the PDF straight from storage for 15 minutes (`FileUrlExpiresAt`): the
+SDK fetches it without your API key and the file never passes through the
+API. When the link is missing, about to expire or refused, it downloads
+through `GET /v1/renders/{id}/download` instead, which is what
+`Renders.Download(ctx, renderID)` always uses. Need the PDF later? Call
+`Renders.Get` again for a fresh link.
 
 ## Options
 

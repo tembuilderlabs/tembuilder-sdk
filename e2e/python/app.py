@@ -74,8 +74,13 @@ def live_sync(template_ref: str) -> None:
             poll_interval=2.0,
             timeout=180.0,
         )
-        pdf = client.renders.download(str(status.render_id))
-        assert pdf.content[:5] == b"%PDF-"
+        assert isinstance(status.file_url, str) and status.file_url.startswith("http"), "status has no signed file_url"
+
+        step("download from the signed file_url, then by id through the API")
+        signed = client.renders.download(status)
+        assert signed.content[:5] == b"%PDF-"
+        via_api = client.renders.download(str(status.render_id))
+        assert (via_api.content, via_api.filename) == (signed.content, signed.filename)
 
         step("render log contains it")
         page = client.renders.list(template_id=template.id, per_page=20)

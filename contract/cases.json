@@ -400,7 +400,7 @@
       }
     },
     {
-      "name": "getRender returns a terminal status",
+      "name": "getRender returns a terminal status with a signed file URL",
       "operation": "getRender",
       "args": {
         "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
@@ -420,7 +420,35 @@
           "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
           "status": "success",
           "duration_ms": 1200,
-          "download_url": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download"
+          "download_url": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download",
+          "file_url": "https://account.r2.cloudflarestorage.com/user-data/ws/proj/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d.pdf?X-Amz-Expires=900&X-Amz-Signature=abc",
+          "file_url_expires_at": "2026-05-01T10:15:00Z"
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
+      "name": "getRender reports a pending render without download links",
+      "operation": "getRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+          "status": "pending"
         }
       },
       "expect": {

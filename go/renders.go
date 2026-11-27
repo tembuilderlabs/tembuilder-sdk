@@ -2,6 +2,7 @@ package tembuilder
 
 import (
 	"context"
+	"io"
 	"iter"
 	"mime"
 	"net/http"
@@ -11,7 +12,13 @@ import (
 )
 
 // RendersService queues renders, follows their status and downloads PDFs.
-type RendersService struct{ api *api.Client }
+type RendersService struct {
+	api   *api.Client
+	files *http.Client
+}
+
+// fileURLExpiryMargin skips a signed file URL this close to expiry.
+const fileURLExpiryMargin = 30 * time.Second
 
 // RenderFile is a downloaded render output.
 type RenderFile struct {
@@ -74,22 +81,69 @@ func (s *RendersService) All(ctx context.Context, params ListRendersParams) iter
 	})
 }
 
-// Download fetches the PDF of a successful render.
+// DownloadFrom fetches the PDF of a successful render from the status
+// returned by Get, WaitFor or CreateAndWait. It downloads straight from
+// storage through the signed FileUrl, without sending the API key; when that
+// link is missing, about to expire or refused, it falls back to Download.
+func (s *RendersService) DownloadFrom(ctx context.Context, status *RenderStatus) (*RenderFile, error) {
+	if url, ok := usableFileURL(status); ok {
+		if file := s.downloadSigned(ctx, url); file != nil {
+			return file, nil
+		}
+	}
+	return s.Download(ctx, status.RenderId.String())
+}
+
+func usableFileURL(status *RenderStatus) (string, bool) {
+	if status.FileUrl == nil || *status.FileUrl == "" {
+		return "", false
+	}
+	if status.FileUrlExpiresAt != nil && time.Until(*status.FileUrlExpiresAt) <= fileURLExpiryMargin {
+		return "", false
+	}
+	return *status.FileUrl, true
+}
+
+// downloadSigned fetches a signed file URL; nil means "use the API endpoint".
+func (s *RendersService) downloadSigned(ctx context.Context, url string) *RenderFile {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil
+	}
+	request.Header.Set("User-Agent", "tembuilder-go/"+Version)
+	response, err := s.files.Do(request)
+	if err != nil {
+		return nil // unreachable storage, after the transport's retries
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode > 299 {
+		return nil
+	}
+	content, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil
+	}
+	return renderFile(content, response.Header)
+}
+
+func renderFile(content []byte, header http.Header) *RenderFile {
+	contentType := header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/pdf"
+	}
+	return &RenderFile{Content: content, ContentType: contentType, Filename: filenameFromDisposition(header)}
+}
+
+// Download fetches the PDF of a successful render by id through
+// GET /v1/renders/{id}/download. Prefer DownloadFrom when you have the
+// render's status: it skips passing the file through the API.
 func (s *RendersService) Download(ctx context.Context, renderID string) (*RenderFile, error) {
 	response, err := s.api.DownloadRender(ctx, renderID)
 	parsed, err := call(response, err, api.ParseDownloadRenderResponse)
 	if err != nil {
 		return nil, err
 	}
-	contentType := parsed.HTTPResponse.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/pdf"
-	}
-	return &RenderFile{
-		Content:     parsed.Body,
-		ContentType: contentType,
-		Filename:    filenameFromDisposition(parsed.HTTPResponse.Header),
-	}, nil
+	return renderFile(parsed.Body, parsed.HTTPResponse.Header), nil
 }
 
 // WaitFor polls a render until it is terminal. It returns the status on

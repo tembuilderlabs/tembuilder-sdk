@@ -105,7 +105,9 @@ func New(options ...Option) (*Client, error) {
 	return &Client{
 		Account:   &AccountService{api: generated},
 		Templates: &TemplatesService{api: generated},
-		Renders:   &RendersService{api: generated},
+		// Signed file URLs share the timeout and retries but bypass the
+		// request editors: they carry their own signature, never the API key.
+		Renders: &RendersService{api: generated, files: &httpClient},
 	}, nil
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -248,5 +249,96 @@ func TestWaitFor(t *testing.T) {
 	sleeping := newStub(t, statusHandler("pending"))
 	if _, err := newTestClient(t, sleeping).Renders.WaitFor(deadline, renderID, WaitOptions{PollInterval: time.Hour}); !errors.Is(err, context.DeadlineExceeded) || sleeping.count() != 1 {
 		t.Fatalf("err = %v requests %d", err, sleeping.count())
+	}
+}
+
+func signedStatus(fileURL string, expiresIn *time.Duration) *RenderStatus {
+	status := &RenderStatus{Status: RenderStatusSuccess}
+	_ = status.RenderId.UnmarshalText([]byte(renderID))
+	if fileURL != "" {
+		status.FileUrl = &fileURL
+	}
+	if expiresIn != nil {
+		at := time.Now().Add(*expiresIn)
+		status.FileUrlExpiresAt = &at
+	}
+	return status
+}
+
+func pdfHandler(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", `attachment; filename="inv-v3-base-ab12.pdf"`)
+	_, _ = w.Write([]byte("%PDF"))
+}
+
+func TestDownloadFromSignedFileURL(t *testing.T) {
+	fresh := 15 * time.Minute
+	storage := newStub(t, pdfHandler)
+	api := newStub(t, pdfHandler)
+	file, err := newTestClient(t, api).Renders.DownloadFrom(context.Background(), signedStatus(storage.URL+"/user-data/out.pdf?X-Amz-Signature=sig", &fresh))
+	if err != nil || string(file.Content) != "%PDF" || file.Filename != "inv-v3-base-ab12.pdf" || file.ContentType != "application/pdf" {
+		t.Fatalf("file %+v err %v", file, err)
+	}
+	if storage.count() != 1 || api.count() != 0 {
+		t.Fatalf("storage %d api %d requests", storage.count(), api.count())
+	}
+	sent := storage.requests[0]
+	if sent.Path != "/user-data/out.pdf" || sent.Query["X-Amz-Signature"] != "sig" {
+		t.Fatalf("storage request %+v", sent)
+	}
+	if sent.Header.Get("ApiKey") != "" || !strings.HasPrefix(sent.Header.Get("User-Agent"), "tembuilder-go/") {
+		t.Fatalf("storage headers %v", sent.Header)
+	}
+}
+
+func TestDownloadFromRetriesStorage(t *testing.T) {
+	fresh := 15 * time.Minute
+	storage := newStub(t, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusServiceUnavailable) }, pdfHandler)
+	api := newStub(t, pdfHandler)
+	if _, err := newTestClient(t, api, WithMaxRetries(1)).Renders.DownloadFrom(context.Background(), signedStatus(storage.URL+"/f", &fresh)); err != nil {
+		t.Fatal(err)
+	}
+	if storage.count() != 2 || api.count() != 0 {
+		t.Fatalf("storage %d api %d requests", storage.count(), api.count())
+	}
+}
+
+func TestDownloadFromFallsBackToTheAPI(t *testing.T) {
+	fresh := 15 * time.Minute
+	soon := 5 * time.Second
+	refused := newStub(t, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusForbidden) })
+	truncated := newStub(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Length", "100")
+		_, _ = w.Write([]byte("%P")) // body ends early: reading it fails
+	})
+	closed := httptest.NewServer(http.NotFoundHandler())
+	closed.Close()
+	for name, status := range map[string]*RenderStatus{
+		"refused by storage":  signedStatus(refused.URL+"/f", &fresh),
+		"truncated body":      signedStatus(truncated.URL+"/f", &fresh),
+		"unreachable storage": signedStatus(closed.URL+"/f", &fresh),
+		"invalid url":         signedStatus("http://[::1/f", &fresh),
+		"about to expire":     signedStatus(refused.URL+"/f", &soon),
+		"no file url":         signedStatus("", nil),
+	} {
+		api := newStub(t, pdfHandler)
+		file, err := newTestClient(t, api).Renders.DownloadFrom(context.Background(), status)
+		if err != nil || string(file.Content) != "%PDF" {
+			t.Fatalf("%s: file %+v err %v", name, file, err)
+		}
+		if api.count() != 1 || api.requests[0].Path != "/v1/renders/"+renderID+"/download" || api.requests[0].Header.Get("ApiKey") != "test-key" {
+			t.Fatalf("%s: api requests %+v", name, api.requests)
+		}
+	}
+}
+
+func TestDownloadFromTrustsALinkWithoutExpiry(t *testing.T) {
+	storage := newStub(t, pdfHandler)
+	api := newStub(t, pdfHandler)
+	if _, err := newTestClient(t, api).Renders.DownloadFrom(context.Background(), signedStatus(storage.URL+"/f", nil)); err != nil {
+		t.Fatal(err)
+	}
+	if storage.count() != 1 || api.count() != 0 {
+		t.Fatalf("storage %d api %d requests", storage.count(), api.count())
 	}
 }

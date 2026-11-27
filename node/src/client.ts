@@ -66,7 +66,7 @@ type FetchResult<T> = Promise<{ data?: T; error?: unknown; response: Response }>
  * ```ts
  * const tembuilder = new Tembuilder({ apiKey: process.env.TEMBUILDER_API_KEY })
  * const render = await tembuilder.renders.createAndWait({ template_id, parameters })
- * const pdf = await tembuilder.renders.download(render.render_id)
+ * const pdf = await tembuilder.renders.download(render)
  * ```
  */
 export class Tembuilder {
@@ -90,14 +90,17 @@ export class Tembuilder {
         maxDelayMs: options.maxRetryDelayMs ?? 8_000,
       },
     })
+    const userAgent = `tembuilder-node/${VERSION}`
     const client = createClient<paths>({
       baseUrl,
       fetch: transport,
-      headers: { ApiKey: apiKey, 'User-Agent': `tembuilder-node/${VERSION}` },
+      headers: { ApiKey: apiKey, 'User-Agent': userAgent },
     })
     this.account = new AccountResource(client)
     this.templates = new TemplatesResource(client)
-    this.renders = new RendersResource(client)
+    // Signed file URLs go through the same timeouts and retries, but straight
+    // to storage and without the API key: the URL carries its own signature.
+    this.renders = new RendersResource(client, (url) => transport(new Request(url, { headers: { 'User-Agent': userAgent } })))
   }
 }
 
@@ -129,8 +132,14 @@ class TemplatesResource {
   }
 }
 
+// A signed file URL this close to expiry is not worth trying.
+const FILE_URL_EXPIRY_MARGIN_MS = 30_000
+
 class RendersResource {
-  constructor(private readonly client: Client<paths>) {}
+  constructor(
+    private readonly client: Client<paths>,
+    private readonly fetchFile: (url: string) => Promise<Response>,
+  ) {}
 
   /** Queues a render. Resolves with the queued job, not the PDF. */
   create(request: RenderRequest): Promise<RenderQueued> {
@@ -152,19 +161,42 @@ class RendersResource {
     yield* paginate((page) => this.list({ ...params, page }))
   }
 
-  /** Downloads the PDF of a successful render. */
-  async download(renderId: string): Promise<RenderFile> {
+  /**
+   * Downloads the PDF of a successful render.
+   *
+   * Pass the status from `get`, `waitFor` or `createAndWait` to fetch the PDF
+   * straight from storage through its signed `file_url`, without sending the
+   * API key. With a render id, or when that link is missing, expired or
+   * refused, the PDF comes through `GET /v1/renders/{id}/download` instead.
+   */
+  async download(render: string | RenderStatus): Promise<RenderFile> {
+    if (typeof render !== 'string' && usableFileUrl(render)) {
+      const file = await this.downloadSigned(render.file_url!)
+      if (file) return file
+    }
+    const renderId = typeof render === 'string' ? render : render.render_id
     const { data, response } = await unwrapWithResponse(
       this.client.GET('/v1/renders/{render_id}/download', {
         params: { path: { render_id: renderId } },
         parseAs: 'arrayBuffer',
       }),
     )
-    return {
-      bytes: new Uint8Array(data as ArrayBuffer),
-      contentType: response.headers.get('content-type') ?? 'application/pdf',
-      filename: filenameFromDisposition(response.headers.get('content-disposition')),
+    return renderFile(data as ArrayBuffer, response)
+  }
+
+  /** Fetches a signed file URL; null means "use the API endpoint instead". */
+  private async downloadSigned(url: string): Promise<RenderFile | null> {
+    let response: Response
+    try {
+      response = await this.fetchFile(url)
+    } catch {
+      return null // ConnectionError or TimeoutError after the transport's retries
     }
+    if (!response.ok) {
+      await response.body?.cancel()
+      return null
+    }
+    return renderFile(await response.arrayBuffer(), response)
   }
 
   /**
@@ -220,6 +252,20 @@ async function* paginate<T>(fetchPage: (page: number) => Promise<{ data: T[]; ha
 }
 
 /** Extracts filename / filename* from a Content-Disposition header. */
+function usableFileUrl(status: RenderStatus): boolean {
+  if (!status.file_url) return false
+  if (!status.file_url_expires_at) return true
+  return Date.parse(status.file_url_expires_at) - Date.now() > FILE_URL_EXPIRY_MARGIN_MS
+}
+
+function renderFile(data: ArrayBuffer, response: Response): RenderFile {
+  return {
+    bytes: new Uint8Array(data),
+    contentType: response.headers.get('content-type') ?? 'application/pdf',
+    filename: filenameFromDisposition(response.headers.get('content-disposition')),
+  }
+}
+
 export function filenameFromDisposition(header: string | null): string | null {
   if (!header) return null
   const extended = /filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/.exec(header)

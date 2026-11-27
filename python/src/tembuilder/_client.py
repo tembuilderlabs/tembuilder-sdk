@@ -76,6 +76,11 @@ class _Config:
     def headers(self) -> dict[str, str]:
         return {"ApiKey": self.api_key, "User-Agent": f"tembuilder-python/{__version__}"}
 
+    @property
+    def file_headers(self) -> dict[str, str]:
+        # Signed file URLs carry their own signature: never send the API key.
+        return {"User-Agent": f"tembuilder-python/{__version__}"}
+
 
 def _raise_for_status(response: httpx.Response) -> None:
     if not response.is_success:
@@ -127,6 +132,34 @@ def _render_file(response: Response[Any]) -> RenderFile:
     file = _parsed(response, File)
     return RenderFile(
         content=file.payload.read(),
+        content_type=response.headers.get("content-type", "application/pdf"),
+        filename=filename_from_disposition(response.headers.get("content-disposition")),
+    )
+
+
+# A signed file URL this close to expiry is not worth trying.
+_FILE_URL_EXPIRY_MARGIN = datetime.timedelta(seconds=30)
+
+
+def _usable_file_url(status: RenderStatus) -> str | None:
+    """The status's signed file URL, unless it is missing or about to expire."""
+    if isinstance(status.file_url, Unset) or not status.file_url:
+        return None
+    expires_at = status.file_url_expires_at
+    if not isinstance(expires_at, Unset):
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=datetime.UTC)
+        if expires_at - datetime.datetime.now(datetime.UTC) <= _FILE_URL_EXPIRY_MARGIN:
+            return None
+    return status.file_url
+
+
+def _signed_file(response: httpx.Response) -> RenderFile | None:
+    """The PDF from a storage response; None means "use the API endpoint instead"."""
+    if not response.is_success:
+        return None
+    return RenderFile(
+        content=response.content,
         content_type=response.headers.get("content-type", "application/pdf"),
         filename=filename_from_disposition(response.headers.get("content-disposition")),
     )
@@ -240,6 +273,10 @@ class TemplatesResource(_SyncResources):
 
 
 class RendersResource(_SyncResources):
+    def __init__(self, client: GeneratedClient, files: httpx.Client) -> None:
+        super().__init__(client)
+        self._files = files
+
     def create(
         self,
         template_id: str | UUID,
@@ -305,8 +342,27 @@ class RendersResource(_SyncResources):
                 return
             page += 1
 
-    def download(self, render_id: str) -> RenderFile:
-        """Downloads the PDF of a successful render."""
+    def download(self, render: str | RenderStatus) -> RenderFile:
+        """Downloads the PDF of a successful render.
+
+        Pass the status from ``get``, ``wait_for`` or ``create_and_wait`` to fetch
+        the PDF straight from storage through its signed ``file_url``, without
+        sending the API key. With a render id, or when that link is missing,
+        expired or refused, the PDF comes through
+        ``GET /v1/renders/{id}/download`` instead.
+        """
+        if isinstance(render, RenderStatus):
+            url = _usable_file_url(render)
+            if url is not None:
+                try:
+                    file = _signed_file(self._files.get(url))
+                except httpx.HTTPError:  # unreachable storage, after the transport's retries
+                    file = None
+                if file is not None:
+                    return file
+            render_id = str(render.render_id)
+        else:
+            render_id = render
         return _render_file(self._call(lambda: download_render.sync_detailed(render_id, client=self._client)))
 
     def wait_for(
@@ -347,7 +403,7 @@ class Tembuilder:
 
     >>> client = Tembuilder(api_key="...")
     >>> status = client.renders.create_and_wait(template_id, parameters={"customer": "Acme"})
-    >>> pdf = client.renders.download(str(status.render_id))
+    >>> pdf = client.renders.download(status)
     """
 
     def __init__(
@@ -369,13 +425,20 @@ class Tembuilder:
             transport=RetryTransport(transport or httpx.HTTPTransport(), config.policy),
             event_hooks={"response": [_raise_for_status]},
         )
+        # Signed file URLs: same timeout and retries, no API key, no base URL.
+        self._files = httpx.Client(
+            headers=config.file_headers,
+            timeout=config.timeout,
+            transport=RetryTransport(transport or httpx.HTTPTransport(), config.policy),
+        )
         generated = GeneratedClient(base_url=config.base_url, token=config.api_key).set_httpx_client(self._http)
         self.account = AccountResource(generated)
         self.templates = TemplatesResource(generated)
-        self.renders = RendersResource(generated)
+        self.renders = RendersResource(generated, self._files)
 
     def close(self) -> None:
         self._http.close()
+        self._files.close()
 
     def __enter__(self) -> Tembuilder:
         return self
@@ -440,6 +503,10 @@ class AsyncTemplatesResource(_AsyncResources):
 
 
 class AsyncRendersResource(_AsyncResources):
+    def __init__(self, client: GeneratedClient, files: httpx.AsyncClient) -> None:
+        super().__init__(client)
+        self._files = files
+
     async def create(
         self,
         template_id: str | UUID,
@@ -504,7 +571,27 @@ class AsyncRendersResource(_AsyncResources):
                 return
             page += 1
 
-    async def download(self, render_id: str) -> RenderFile:
+    async def download(self, render: str | RenderStatus) -> RenderFile:
+        """Downloads the PDF of a successful render.
+
+        Pass the status from ``get``, ``wait_for`` or ``create_and_wait`` to fetch
+        the PDF straight from storage through its signed ``file_url``, without
+        sending the API key. With a render id, or when that link is missing,
+        expired or refused, the PDF comes through
+        ``GET /v1/renders/{id}/download`` instead.
+        """
+        if isinstance(render, RenderStatus):
+            url = _usable_file_url(render)
+            if url is not None:
+                try:
+                    file = _signed_file(await self._files.get(url))
+                except httpx.HTTPError:  # unreachable storage, after the transport's retries
+                    file = None
+                if file is not None:
+                    return file
+            render_id = str(render.render_id)
+        else:
+            render_id = render
         return _render_file(await self._call(lambda: download_render.asyncio_detailed(render_id, client=self._client)))
 
     async def wait_for(
@@ -560,13 +647,20 @@ class AsyncTembuilder:
             transport=AsyncRetryTransport(transport or httpx.AsyncHTTPTransport(), config.policy),
             event_hooks={"response": [_araise_for_status]},
         )
+        # Signed file URLs: same timeout and retries, no API key, no base URL.
+        self._files = httpx.AsyncClient(
+            headers=config.file_headers,
+            timeout=config.timeout,
+            transport=AsyncRetryTransport(transport or httpx.AsyncHTTPTransport(), config.policy),
+        )
         generated = GeneratedClient(base_url=config.base_url, token=config.api_key).set_async_httpx_client(self._http)
         self.account = AsyncAccountResource(generated)
         self.templates = AsyncTemplatesResource(generated)
-        self.renders = AsyncRendersResource(generated)
+        self.renders = AsyncRendersResource(generated, self._files)
 
     async def aclose(self) -> None:
         await self._http.aclose()
+        await self._files.aclose()
 
     async def __aenter__(self) -> AsyncTembuilder:
         return self

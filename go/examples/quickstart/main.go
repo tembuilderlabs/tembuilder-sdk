@@ -32,7 +32,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	file, err := client.Renders.Download(ctx, status.RenderId.String())
+	file, err := client.Renders.DownloadFrom(ctx, status)
 	if err != nil {
 		return err
 	}

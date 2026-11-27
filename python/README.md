@@ -22,7 +22,7 @@ with Tembuilder(api_key="...") as client:  # or TEMBUILDER_API_KEY
     status = client.renders.create_and_wait(
         template.id, parameters={**example, "customer": "Acme Corp"}
     )
-    pdf = client.renders.download(str(status.render_id))
+    pdf = client.renders.download(status)
     Path(pdf.filename or "output.pdf").write_bytes(pdf.content)
 ```
 
@@ -57,7 +57,7 @@ while the PDF renders, so choose by where your code runs:
 status = client.renders.create_and_wait(
     template.id, parameters={"customer": "Acme Corp"}, poll_interval=2.0, timeout=60.0
 )
-pdf = client.renders.download(str(status.render_id))
+pdf = client.renders.download(status)
 ```
 
 Already have a `render_id`? `client.renders.wait_for(render_id)`.
@@ -75,7 +75,7 @@ status = client.renders.get(order.render_id)
 if status.status == "pending":
     pass  # not ready yet: check again later
 elif status.status == "success":
-    pdf = client.renders.download(order.render_id)
+    pdf = client.renders.download(status)
     Path(pdf.filename or "output.pdf").write_bytes(pdf.content)
 else:  # "failed" or "quota_exceeded"
     print(status.status, status.error_message)
@@ -94,8 +94,20 @@ arrives (see [Webhooks](#webhooks)):
 
 ```python
 if event["type"] == "renders.status" and event["data"]["status"] == "success":
-    pdf = client.renders.download(event["data"]["render_id"])
+    status = client.renders.get(event["data"]["render_id"])
+    pdf = client.renders.download(status)
 ```
+
+### Downloading the PDF
+
+Pass the **status** (from `get`, `wait_for` or `create_and_wait`) to
+`renders.download`. A successful status carries `file_url`, a signed link
+that serves the PDF straight from storage for 15 minutes
+(`file_url_expires_at`): the SDK fetches it without your API key and the file
+never passes through the API. When the link is missing, about to expire or
+refused, the SDK downloads through `GET /v1/renders/{id}/download` instead.
+`renders.download(render_id)` always uses that endpoint. Need the PDF later?
+Call `renders.get(render_id)` again for a fresh link.
 
 ## API
 

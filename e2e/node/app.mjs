@@ -60,8 +60,15 @@ const status = await client.renders.createAndWait(
   { template_id: template.id, version, parameters: detail.input.example_parameters },
   { timeoutMs: 180_000, pollIntervalMs: 2_000 },
 )
-const file = await client.renders.download(status.render_id)
-assert.equal(new TextDecoder().decode(file.bytes.slice(0, 5)), '%PDF-')
+assert.match(status.file_url ?? '', /^https?:\/\//, 'status has no signed file_url')
+assert.ok(Date.parse(status.file_url_expires_at) > Date.now(), 'file_url is already expired')
+
+step('download from the signed file_url, then by id through the API')
+const signed = await client.renders.download(status)
+assert.equal(new TextDecoder().decode(signed.bytes.slice(0, 5)), '%PDF-')
+const viaApi = await client.renders.download(status.render_id)
+assert.deepEqual(viaApi.bytes, signed.bytes)
+assert.equal(viaApi.filename, signed.filename)
 
 step('render log contains it')
 const page = await client.renders.list({ template_id: template.id, per_page: 20 })

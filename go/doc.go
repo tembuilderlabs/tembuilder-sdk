@@ -5,7 +5,7 @@
 //		TemplateId: templateID,
 //		Parameters: &map[string]any{"customer": "Acme"},
 //	}, tembuilder.WaitOptions{})
-//	file, err := client.Renders.Download(ctx, status.RenderId.String())
+//	file, err := client.Renders.DownloadFrom(ctx, status)
 //
 // The low-level client in internal/api is generated from openapi/tembuilder.yaml;
 // this package adds configuration, retries, error mapping, render polling,

@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"strings"
 	"time"
 
 	tembuilder "github.com/tembuilderlabs/tembuilder-sdk/go"
@@ -91,8 +92,13 @@ func live(ctx context.Context) {
 		Version:    tembuilder.Ptr(version),
 		Parameters: &parameters,
 	}, tembuilder.WaitOptions{PollInterval: 2 * time.Second, Timeout: 3 * time.Minute}))
-	file := must(client.Renders.Download(ctx, status.RenderId.String()))
-	check(bytes.HasPrefix(file.Content, []byte("%PDF-")), "download is not a PDF")
+	check(status.FileUrl != nil && strings.HasPrefix(*status.FileUrl, "http"), "status has no signed file_url")
+
+	step("download from the signed file_url, then by id through the API")
+	signed := must(client.Renders.DownloadFrom(ctx, status))
+	check(bytes.HasPrefix(signed.Content, []byte("%PDF-")), "signed download is not a PDF")
+	viaAPI := must(client.Renders.Download(ctx, status.RenderId.String()))
+	check(bytes.Equal(viaAPI.Content, signed.Content) && viaAPI.Filename == signed.Filename, "API download differs from the signed download")
 
 	step("render log contains it")
 	page := must(client.Renders.List(ctx, tembuilder.ListRendersParams{TemplateId: &template.Id, PerPage: tembuilder.Ptr(int32(20))}))
