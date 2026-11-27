@@ -44,7 +44,12 @@ Never edit the copy or the generated directories (`node/src/generated`,
    `feat` (new operation/field), `fix`, `docs`/`chore` (no SDK-visible change),
    `feat!` + label `breaking-change` for a major. On GitHub the `sync-spec`
    workflow opens this PR automatically (title defaults to `feat(api)`; adjust
-   it before merging). Merging feeds release-please; releases publish and then
-   verify the published packages against production.
+   it before merging). Push hand-written changes (wrappers, cases, e2e, docs)
+   to that `spec-sync` branch; once it has such a commit the workflow stops
+   rewriting it. **Before merging, check the PR's file list contains your
+   hand-written files** (`gh pr diff <n> --name-only`): a sync run before that
+   guard existed once dropped them silently. Merging feeds release-please
+   (one release PR for every changed SDK); releases publish and then verify
+   the published packages against production.
 5. Hand off to `tembuilder-wa/.agents/skills/public-api` for the API reference
    docs.

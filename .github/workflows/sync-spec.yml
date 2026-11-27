@@ -34,32 +34,60 @@ jobs:
           private-key: ${{ secrets.SPEC_SYNC_APP_PRIVATE_KEY }}
           owner: tembuilderlabs
           repositories: tembuilder-be,tembuilder-sdk
-      - uses: actions/checkout@v4
+      # Wrapper code, contract cases and docs are pushed to the open sync PR by
+      # hand. Regenerating rewrites that branch, so never touch a sync PR that
+      # has any commit besides this workflow's own: merge or close it first.
+      - id: guard
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if ! gh api "repos/${{ github.repository }}/branches/spec-sync" >/dev/null 2>&1; then
+            exit 0
+          fi
+          manual=$(gh api "repos/${{ github.repository }}/compare/main...spec-sync" \
+            -q '[.commits[] | select(.commit.message | startswith("feat(api): sync public API contract") | not)] | length')
+          if [ "$manual" != "0" ]; then
+            echo "::notice::spec-sync has $manual hand-written commit(s); leaving that PR untouched. Merge or close it, then rerun this workflow."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@v4
         with:
           token: ${{ steps.app-token.outputs.token }}
-      - uses: actions/checkout@v4
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/checkout@v4
         with:
           repository: tembuilderlabs/tembuilder-be
           token: ${{ steps.app-token.outputs.token }}
           path: .be
           sparse-checkout: svr/service-svr/internal/publicapi/openapi.yaml
           sparse-checkout-cone-mode: false
-      - id: source
+      - if: steps.guard.outputs.skip != 'true'
+        id: source
         run: echo "sha=$(git -C .be rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - if: steps.guard.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - uses: actions/setup-go@v5
+      - if: steps.guard.outputs.skip != 'true'
+        uses: actions/setup-go@v5
         with:
           go-version-file: go/go.mod
-      - uses: astral-sh/setup-uv@v6
-      - run: pnpm install --frozen-lockfile
-      - run: cd python && uv sync --frozen
-      - run: make sync-spec BE_SPEC=.be/svr/service-svr/internal/publicapi/openapi.yaml
-      - run: rm -rf .be
-      - uses: peter-evans/create-pull-request@v7
+      - if: steps.guard.outputs.skip != 'true'
+        uses: astral-sh/setup-uv@v6
+      - if: steps.guard.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+      - if: steps.guard.outputs.skip != 'true'
+        run: cd python && uv sync --frozen
+      - if: steps.guard.outputs.skip != 'true'
+        run: make sync-spec BE_SPEC=.be/svr/service-svr/internal/publicapi/openapi.yaml
+      - if: steps.guard.outputs.skip != 'true'
+        run: rm -rf .be
+      - if: steps.guard.outputs.skip != 'true'
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ steps.app-token.outputs.token }}
           branch: spec-sync
@@ -71,4 +99,4 @@ jobs:
 
             Before merging (see the `update-sdk` skill):
             - Set the PR title type to what changed for SDK users: `feat` (new operation or field), `fix`, `docs`/`chore` (no user-visible change), or `feat!` for a breaking change (also label `breaking-change`).
-            - A new operation fails the contract tests until it has a case in `contract/cases.json` and a wrapper method in the Node, Python and Go clients: push those to this branch.
+            - A new operation fails the contract tests until it has a case in `contract/cases.json` and a wrapper method in the Node, Python and Go clients: push those to this branch. Once you have, this workflow no longer rewrites the branch; check the PR's files before merging.
