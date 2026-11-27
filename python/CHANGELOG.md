@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/tembuilderlabs/tembuilder-sdk/compare/python/v0.2.0...python/v0.3.0) (2026-11-27)
+
+
+### Features
+
+* download render PDFs straight from storage through the signed file_url ([4db501f](https://github.com/tembuilderlabs/tembuilder-sdk/commit/4db501f159a2ee3a45fe93abe56ea6fdec402328))
+
 ## [0.2.0](https://github.com/tembuilderlabs/tembuilder-sdk/compare/python/v0.1.0...python/v0.2.0) (2026-11-27)
 
 
