@@ -24,10 +24,11 @@ fi
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-# A just-published version can take a few minutes to reach every registry mirror.
+# A just-published version can take several minutes to become installable
+# (npm took over five once): wait up to 15 minutes.
 retry() {
   local attempt
-  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  for attempt in $(seq 1 30); do
     "$@" && return 0
     [ "$source" = local ] && return 1
     echo "not available yet (attempt $attempt); retrying in 30s" >&2
