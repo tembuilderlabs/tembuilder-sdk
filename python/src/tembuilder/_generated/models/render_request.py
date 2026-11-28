@@ -23,7 +23,13 @@ class RenderRequest:
         template_id (UUID): Template UUID (slugs are not accepted here).
         version (int | Unset): Published version to render. Defaults to the template's current version.
         variant (str | Unset): Variant name. Defaults to the base variant.
-        parameters (RenderRequestParameters | Unset): Input matching the version's `parameters_schema`.
+        parameters (RenderRequestParameters | Unset): Input matching the version's `parameters_schema`. Parameters the
+            version does not declare, at any depth, are ignored, as is `null`
+            for an optional parameter. An optional parameter may be omitted.
+            A required parameter that is missing or `null`, or any value of
+            the wrong type, rejects the render with `400 COMMON_VALIDATION`
+            and one `details` entry per offending value, for example
+            `parameters.lines[0].qty: expected number, but got string`.
     """
 
     template_id: UUID
