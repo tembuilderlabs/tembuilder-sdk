@@ -17,7 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from tembuilder import APIError, AsyncTembuilder, RenderFailedError, Tembuilder, __version__, verify_webhook
+from tembuilder import APIError, AsyncTembuilder, RenderStatus, Tembuilder, __version__, verify_webhook
 
 LIVE = ("TEMBUILDER_API_KEY", "TEMBUILDER_BASE_URL", "TEMBUILDER_SMOKE_TEMPLATE", "TEMBUILDER_PARAMETER_TEMPLATE")
 
@@ -107,31 +107,31 @@ def live_parameters(client: Tembuilder) -> None:
     assert template.published_versions, "parameter template has no published version"
     version = template.published_versions[-1]
 
-    step("every parameter type renders (text, number, boolean, array, nested object)")
-    typed = client.renders.create_and_wait(
-        template.id, version=version, parameters=cases["valid"], timeout=180, poll_interval=2
-    )
-    assert client.renders.download(typed).content[:5] == b"%PDF-"
-
-    step("omitted parameters fall back to their defaults")
-    defaults = client.renders.create_and_wait(template.id, version=version, timeout=180, poll_interval=2)
-    assert client.renders.download(defaults).content[:5] == b"%PDF-"
-
-    step("a parameter of the wrong type is rejected, not rendered")
-    try:
-        client.renders.create_and_wait(
-            template.id,
-            version=version,
-            parameters={**cases["valid"], **cases["invalid"]},
-            timeout=180,
-            poll_interval=2,
+    def render(parameters: dict[str, Any]) -> RenderStatus:
+        return client.renders.create_and_wait(
+            template.id, version=version, parameters=parameters, timeout=180, poll_interval=2
         )
-    except RenderFailedError as error:
-        assert error.render.status == "failed"
-    except APIError as error:
-        assert 400 <= error.status < 500, error
-    else:
-        raise AssertionError("a wrongly typed parameter rendered")
+
+    accepted = [
+        {
+            "name": "every parameter type renders (text, number, boolean, array, nested object)",
+            "parameters": cases["valid"],
+        },
+        *cases["accepted"],
+    ]
+    for scenario in accepted:
+        step(scenario["name"])
+        assert client.renders.download(render(scenario["parameters"])).content[:5] == b"%PDF-", scenario["name"]
+
+    for scenario in cases["rejected"]:
+        step(f"rejected: {scenario['name']}")
+        try:
+            render(scenario["parameters"])
+        except APIError as error:
+            assert error.status == 400 and error.code == "COMMON_VALIDATION", error
+            assert scenario["detail"] in error.details, (scenario["detail"], error.details)
+        else:
+            raise AssertionError(f"{scenario['name']}: rendered instead of 400 COMMON_VALIDATION")
 
 
 async def live_async(template_ref: str) -> None:

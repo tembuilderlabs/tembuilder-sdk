@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-import { APIError, RenderFailedError, Tembuilder, VERSION, verifyWebhook } from '@tembuilderlabs/sdk'
+import { APIError, Tembuilder, VERSION, verifyWebhook } from '@tembuilderlabs/sdk'
 
 const step = (name) => console.log(`- ${name}`)
 
@@ -80,25 +80,25 @@ assert.ok(parameterTemplate.published_versions.length > 0, 'parameter template h
 const parameterVersion = parameterTemplate.published_versions.at(-1)
 const isPdf = (file) => new TextDecoder().decode(file.bytes.slice(0, 5)) === '%PDF-'
 
-step('every parameter type renders (text, number, boolean, array, nested object)')
-const typed = await client.renders.createAndWait(
-  { template_id: parameterTemplate.id, version: parameterVersion, parameters: parameterCases.valid },
-  { timeoutMs: 180_000, pollIntervalMs: 2_000 },
-)
-assert.ok(isPdf(await client.renders.download(typed)))
+const renderWith = (parameters) =>
+  client.renders.createAndWait({ template_id: parameterTemplate.id, version: parameterVersion, parameters }, { timeoutMs: 180_000, pollIntervalMs: 2_000 })
 
-step('omitted parameters fall back to their defaults')
-const defaults = await client.renders.createAndWait({ template_id: parameterTemplate.id, version: parameterVersion }, { timeoutMs: 180_000, pollIntervalMs: 2_000 })
-assert.ok(isPdf(await client.renders.download(defaults)))
+for (const { name, parameters } of [
+  { name: 'every parameter type renders (text, number, boolean, array, nested object)', parameters: parameterCases.valid },
+  ...parameterCases.accepted,
+]) {
+  step(name)
+  assert.ok(isPdf(await client.renders.download(await renderWith(parameters))), name)
+}
 
-step('a parameter of the wrong type is rejected, not rendered')
-await assert.rejects(
-  client.renders.createAndWait(
-    { template_id: parameterTemplate.id, version: parameterVersion, parameters: { ...parameterCases.valid, ...parameterCases.invalid } },
-    { timeoutMs: 180_000, pollIntervalMs: 2_000 },
-  ),
-  (error) => (error instanceof RenderFailedError && error.render.status === 'failed') || (error instanceof APIError && error.status >= 400 && error.status < 500),
-)
+for (const { name, parameters, detail } of parameterCases.rejected) {
+  step(`rejected: ${name}`)
+  await assert.rejects(
+    renderWith(parameters),
+    (error) => error instanceof APIError && error.status === 400 && error.code === 'COMMON_VALIDATION' && error.details.includes(detail),
+    `${name}: want 400 COMMON_VALIDATION with ${detail}`,
+  )
+}
 
 step('typed errors: unknown template is 404, bad key is 401')
 await assert.rejects(client.templates.get('e2e-template-that-does-not-exist'), (error) => error instanceof APIError && error.status === 404)

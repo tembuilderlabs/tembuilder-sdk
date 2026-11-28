@@ -1,6 +1,130 @@
 {
-  "_comment": "Live parameter scenarios for e2e/parameter-template (import it into the smoke project). Shared by the Node, Python and Go apps.",
-  "valid": {
+ "valid": {
+  "title": "Hóa đơn \"#42\"\nline 2",
+  "emptyText": "",
+  "quantity": 3,
+  "unitPrice": 19.99,
+  "discount": -12,
+  "paid": true,
+  "tags": [
+   "a",
+   "b"
+  ],
+  "scores": [
+   1,
+   2.5,
+   -3
+  ],
+  "lines": [
+   {
+    "sku": "A-1",
+    "qty": 2,
+    "price": 10.5,
+    "taxable": true
+   },
+   {
+    "sku": "B-2",
+    "qty": 0,
+    "price": 0,
+    "taxable": false
+   }
+  ],
+  "customer": {
+   "name": "Acme",
+   "vip": false,
+   "address": {
+    "city": "Hà Nội",
+    "zip": "100000"
+   }
+  }
+ },
+ "accepted": [
+  {
+   "name": "an optional parameter may be omitted",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   }
+  },
+  {
+   "name": "an optional parameter may be null",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": null,
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   }
+  },
+  {
+   "name": "undeclared parameters at every depth are ignored",
+   "parameters": {
     "title": "Hóa đơn \"#42\"\nline 2",
     "emptyText": "",
     "quantity": 3,
@@ -8,38 +132,675 @@
     "discount": -12,
     "paid": true,
     "tags": [
-      "a",
-      "b"
+     "a",
+     "b"
     ],
     "scores": [
-      1,
-      2.5,
-      -3
+     1,
+     2.5,
+     -3
     ],
     "lines": [
-      {
-        "sku": "A-1",
-        "qty": 2,
-        "price": 10.5,
-        "taxable": true
-      },
-      {
-        "sku": "B-2",
-        "qty": 0,
-        "price": 0,
-        "taxable": false
-      }
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true,
+      "color": "red"
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
     ],
     "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000",
+      "floor": 3
+     },
+     "tier": "gold"
+    },
+    "unknownTopLevel": {
+     "any": [
+      "shape",
+      1
+     ]
+    }
+   }
+  },
+  {
+   "name": "empty arrays satisfy array parameters",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [],
+    "scores": [],
+    "lines": [],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   }
+  }
+ ],
+ "rejected": [
+  {
+   "name": "no parameters at all",
+   "parameters": {},
+   "detail": "parameters: missing properties: 'title', 'quantity', 'unitPrice', 'discount', 'paid', 'tags', 'scores', 'lines', 'customer'"
+  },
+  {
+   "name": "a required parameter is missing",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters: missing properties: 'quantity'"
+  },
+  {
+   "name": "a required text is null",
+   "parameters": {
+    "title": null,
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.title: expected string, but got null"
+  },
+  {
+   "name": "a text is given an array",
+   "parameters": {
+    "title": [
+     "Hóa đơn"
+    ],
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.title: expected string, but got array"
+  },
+  {
+   "name": "a text is given a number",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": 0,
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.emptyText: expected string, but got number"
+  },
+  {
+   "name": "a number is given a string",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": "three",
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.quantity: expected number, but got string"
+  },
+  {
+   "name": "a required number is null",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": null,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.unitPrice: expected number, but got null"
+  },
+  {
+   "name": "a boolean is given a string",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": "true",
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.paid: expected boolean, but got string"
+  },
+  {
+   "name": "an array is given a string",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": "a,b",
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.tags: expected array, but got string"
+  },
+  {
+   "name": "an array item has the wrong type",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     "2.5"
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.scores[1]: expected number, but got string"
+  },
+  {
+   "name": "an object-array item field has the wrong type",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": "0",
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.lines[1].qty: expected number, but got string"
+  },
+  {
+   "name": "an object-array item misses a required field",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.lines[0]: missing properties: 'sku'"
+  },
+  {
+   "name": "an object is given an array",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": [
+     {
       "name": "Acme",
       "vip": false,
       "address": {
-        "city": "Hà Nội",
-        "zip": "100000"
+       "city": "Hà Nội",
+       "zip": "100000"
       }
-    }
+     }
+    ]
+   },
+   "detail": "parameters.customer: expected object, but got array"
   },
-  "invalid": {
-    "quantity": "three"
+  {
+   "name": "a nested object field has the wrong type",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": "Hà Nội",
+      "zip": 100000
+     }
+    }
+   },
+   "detail": "parameters.customer.address.zip: expected string, but got number"
+  },
+  {
+   "name": "a nested object field is null",
+   "parameters": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+     "a",
+     "b"
+    ],
+    "scores": [
+     1,
+     2.5,
+     -3
+    ],
+    "lines": [
+     {
+      "sku": "A-1",
+      "qty": 2,
+      "price": 10.5,
+      "taxable": true
+     },
+     {
+      "sku": "B-2",
+      "qty": 0,
+      "price": 0,
+      "taxable": false
+     }
+    ],
+    "customer": {
+     "name": "Acme",
+     "vip": false,
+     "address": {
+      "city": null,
+      "zip": "100000"
+     }
+    }
+   },
+   "detail": "parameters.customer.address.city: expected string, but got null"
   }
+ ]
 }

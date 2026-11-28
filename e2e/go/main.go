@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"maps"
 	"net/http"
 	"os"
 	"slices"
@@ -117,38 +116,41 @@ func live(ctx context.Context) {
 }
 
 // liveParameters renders the imported e2e/parameter-template with every
-// parameter type, with defaults only, and with a wrongly typed parameter.
+// parameter type and with each accepted shape, and checks that every rejected
+// shape fails admission with 400 COMMON_VALIDATION naming the bad value.
 func liveParameters(ctx context.Context, client *tembuilder.Client) {
+	type scenario struct {
+		Name       string         `json:"name"`
+		Parameters map[string]any `json:"parameters"`
+		Detail     string         `json:"detail"`
+	}
 	var cases struct {
-		Valid   map[string]any `json:"valid"`
-		Invalid map[string]any `json:"invalid"`
+		Valid    map[string]any `json:"valid"`
+		Accepted []scenario     `json:"accepted"`
+		Rejected []scenario     `json:"rejected"`
 	}
 	check(json.Unmarshal(must(os.ReadFile(os.Getenv("PARAMETER_CASES"))), &cases) == nil, "parameter cases are not JSON")
 	template := must(client.Templates.Get(ctx, os.Getenv("TEMBUILDER_PARAMETER_TEMPLATE"), tembuilder.GetTemplateParams{}))
 	check(len(template.PublishedVersions) > 0, "parameter template has no published version")
 	version := tembuilder.Ptr(template.PublishedVersions[len(template.PublishedVersions)-1])
 	wait := tembuilder.WaitOptions{PollInterval: 2 * time.Second, Timeout: 3 * time.Minute}
-	isPDF := func(status *tembuilder.RenderStatus) bool {
-		return bytes.HasPrefix(must(client.Renders.DownloadFrom(ctx, status)).Content, []byte("%PDF-"))
+	render := func(parameters map[string]any) (*tembuilder.RenderStatus, error) {
+		return client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Version: version, Parameters: &parameters}, wait)
 	}
 
-	step("every parameter type renders (text, number, boolean, array, nested object)")
-	typed := must(client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Version: version, Parameters: &cases.Valid}, wait))
-	check(isPDF(typed), "typed render is not a PDF")
-
-	step("omitted parameters fall back to their defaults")
-	defaults := must(client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Version: version}, wait))
-	check(isPDF(defaults), "defaults render is not a PDF")
-
-	step("a parameter of the wrong type is rejected, not rendered")
-	wrong := maps.Clone(cases.Valid)
-	maps.Copy(wrong, cases.Invalid)
-	_, err := client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Version: version, Parameters: &wrong}, wait)
-	var failed *tembuilder.RenderFailedError
-	var apiErr *tembuilder.APIError
-	check((errors.As(err, &failed) && failed.Render.Status == tembuilder.RenderStatusFailed) ||
-		(errors.As(err, &apiErr) && apiErr.StatusCode >= 400 && apiErr.StatusCode < 500),
-		"wrongly typed parameter: %v", err)
+	accepted := append([]scenario{{Name: "every parameter type renders (text, number, boolean, array, nested object)", Parameters: cases.Valid}}, cases.Accepted...)
+	for _, tc := range accepted {
+		step(tc.Name)
+		status := must(render(tc.Parameters))
+		check(bytes.HasPrefix(must(client.Renders.DownloadFrom(ctx, status)).Content, []byte("%PDF-")), "%s: not a PDF", tc.Name)
+	}
+	for _, tc := range cases.Rejected {
+		step("rejected: " + tc.Name)
+		_, err := render(tc.Parameters)
+		var apiErr *tembuilder.APIError
+		check(errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusBadRequest && apiErr.Code == "COMMON_VALIDATION" && slices.Contains(apiErr.Details, tc.Detail),
+			"%s: got %v, want 400 COMMON_VALIDATION with %q", tc.Name, err, tc.Detail)
+	}
 }
 
 func main() {

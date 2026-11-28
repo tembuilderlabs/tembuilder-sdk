@@ -9,7 +9,7 @@ interface ContractCase {
   args: Record<string, any>
   request: { method: string; path: string; query: Record<string, string>; body: unknown }
   response: { status: number; headers: Record<string, string>; body?: unknown; text?: string; bodyBase64?: string }
-  expect: { result?: unknown; error?: { status: number; code: string }; file?: { base64: string; filename: string; content_type: string } }
+  expect: { result?: unknown; error?: { status: number; code: string; details?: string[] }; file?: { base64: string; filename: string; content_type: string } }
 }
 
 const suite = loadJSON<{ api_key: string; cases: ContractCase[] }>('cases.json')
@@ -76,6 +76,7 @@ describe('shared HTTP contract', () => {
       expect(error).toBeInstanceOf(APIError)
       expect(error.status).toBe(testCase.expect.error.status)
       expect(error.code).toBe(testCase.expect.error.code)
+      if (testCase.expect.error.details) expect(error.details).toEqual(testCase.expect.error.details)
     } else if (testCase.expect.file) {
       const file = (outcome as { value: { bytes: Uint8Array; filename: string; contentType: string } }).value
       expect(Buffer.from(file.bytes).toString('base64')).toBe(testCase.expect.file.base64)

@@ -122,6 +122,8 @@ def check_outcome(case: dict[str, Any], value: Any, error: BaseException | None)
         assert isinstance(error, APIError)
         assert error.status == expect["error"]["status"]
         assert error.code == expect["error"]["code"]
+        if "details" in expect["error"]:
+            assert error.details == expect["error"]["details"]
         return
     assert error is None
     if "file" in expect:

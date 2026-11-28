@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 )
@@ -31,8 +32,9 @@ type contractCase struct {
 	} `json:"response"`
 	Expect struct {
 		Error *struct {
-			Status int    `json:"status"`
-			Code   string `json:"code"`
+			Status  int      `json:"status"`
+			Code    string   `json:"code"`
+			Details []string `json:"details"`
 		} `json:"error"`
 		File *struct {
 			Base64      string `json:"base64"`
@@ -159,7 +161,8 @@ func TestSharedHTTPContract(t *testing.T) {
 			switch {
 			case tc.Expect.Error != nil:
 				var apiErr *APIError
-				if !errors.As(err, &apiErr) || apiErr.StatusCode != tc.Expect.Error.Status || apiErr.Code != tc.Expect.Error.Code {
+				if !errors.As(err, &apiErr) || apiErr.StatusCode != tc.Expect.Error.Status || apiErr.Code != tc.Expect.Error.Code ||
+					(tc.Expect.Error.Details != nil && !slices.Equal(apiErr.Details, tc.Expect.Error.Details)) {
 					t.Fatalf("error %v, want %+v", err, tc.Expect.Error)
 				}
 			case tc.Expect.File != nil:
