@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/tembuilderlabs/tembuilder-sdk/compare/go/v0.3.0...go/v0.4.0) (2026-11-28)
+
+
+### Features
+
+* **api:** sync public API contract from tembuilder-be@9b4052e ([#9](https://github.com/tembuilderlabs/tembuilder-sdk/issues/9)) ([838f706](https://github.com/tembuilderlabs/tembuilder-sdk/commit/838f706cce4fa5c6d75d0be17eeac3f108e5e67c))
+
 ## [0.3.0](https://github.com/tembuilderlabs/tembuilder-sdk/compare/go/v0.2.0...go/v0.3.0) (2026-11-27)
 
 
