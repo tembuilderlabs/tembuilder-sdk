@@ -94,6 +94,9 @@ def sync_detailed(
     immediately. `202` means the job was accepted, not that a PDF exists
     or that quota was consumed. Poll `status_url` with a delay and a
     bounded deadline; a `404` right after acceptance is transitional.
+    `parameters` are checked against the version before the job is
+    queued: a missing required parameter or a wrongly typed value returns
+    `400`, and undeclared parameters are dropped.
     Requires the `template:render` scope.
 
     Args:
@@ -129,6 +132,9 @@ def sync(
     immediately. `202` means the job was accepted, not that a PDF exists
     or that quota was consumed. Poll `status_url` with a delay and a
     bounded deadline; a `404` right after acceptance is transitional.
+    `parameters` are checked against the version before the job is
+    queued: a missing required parameter or a wrongly typed value returns
+    `400`, and undeclared parameters are dropped.
     Requires the `template:render` scope.
 
     Args:
@@ -159,6 +165,9 @@ async def asyncio_detailed(
     immediately. `202` means the job was accepted, not that a PDF exists
     or that quota was consumed. Poll `status_url` with a delay and a
     bounded deadline; a `404` right after acceptance is transitional.
+    `parameters` are checked against the version before the job is
+    queued: a missing required parameter or a wrongly typed value returns
+    `400`, and undeclared parameters are dropped.
     Requires the `template:render` scope.
 
     Args:
@@ -192,6 +201,9 @@ async def asyncio(
     immediately. `202` means the job was accepted, not that a PDF exists
     or that quota was consumed. Poll `status_url` with a delay and a
     bounded deadline; a `404` right after acceptance is transitional.
+    `parameters` are checked against the version before the job is
+    queued: a missing required parameter or a wrongly typed value returns
+    `400`, and undeclared parameters are dropped.
     Requires the `template:render` scope.
 
     Args:

@@ -11,7 +11,15 @@ T = TypeVar("T", bound="RenderRequestParameters")
 
 @_attrs_define
 class RenderRequestParameters:
-    """Input matching the version's `parameters_schema`."""
+    """Input matching the version's `parameters_schema`. Parameters the
+    version does not declare, at any depth, are ignored, as is `null`
+    for an optional parameter. An optional parameter may be omitted.
+    A required parameter that is missing or `null`, or any value of
+    the wrong type, rejects the render with `400 COMMON_VALIDATION`
+    and one `details` entry per offending value, for example
+    `parameters.lines[0].qty: expected number, but got string`.
+
+    """
 
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 

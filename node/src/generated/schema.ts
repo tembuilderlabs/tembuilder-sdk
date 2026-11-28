@@ -85,6 +85,9 @@ export interface paths {
          *     immediately. `202` means the job was accepted, not that a PDF exists
          *     or that quota was consumed. Poll `status_url` with a delay and a
          *     bounded deadline; a `404` right after acceptance is transitional.
+         *     `parameters` are checked against the version before the job is
+         *     queued: a missing required parameter or a wrongly typed value returns
+         *     `400`, and undeclared parameters are dropped.
          *     Requires the `template:render` scope.
          */
         post: operations["createRender"];
@@ -277,7 +280,15 @@ export interface components {
             version?: number;
             /** @description Variant name. Defaults to the base variant. */
             variant?: string;
-            /** @description Input matching the version's `parameters_schema`. */
+            /**
+             * @description Input matching the version's `parameters_schema`. Parameters the
+             *     version does not declare, at any depth, are ignored, as is `null`
+             *     for an optional parameter. An optional parameter may be omitted.
+             *     A required parameter that is missing or `null`, or any value of
+             *     the wrong type, rejects the render with `400 COMMON_VALIDATION`
+             *     and one `details` entry per offending value, for example
+             *     `parameters.lines[0].qty: expected number, but got string`.
+             */
             parameters?: {
                 [key: string]: unknown;
             };
