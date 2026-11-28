@@ -6,8 +6,9 @@
 #   e2e/run.sh <node|python|go> <X.Y.Z>        # that version from npm / PyPI / the Go proxy
 #   e2e/run.sh <node|python|go|all> latest     # the newest published version
 #
-# Offline checks always run. With TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL and
-# TEMBUILDER_SMOKE_TEMPLATE set, each app also renders a real PDF; REQUIRE_LIVE=1
+# Offline checks always run. With TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL,
+# TEMBUILDER_SMOKE_TEMPLATE and TEMBUILDER_PARAMETER_TEMPLATE (the imported
+# e2e/parameter-template) set, each app also renders real PDFs; REQUIRE_LIVE=1
 # turns a missing live environment into a failure.
 set -euo pipefail
 
@@ -15,6 +16,7 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 language="${1:?usage: e2e/run.sh <node|python|go|all> <local|latest|X.Y.Z>}"
 source="${2:?usage: e2e/run.sh <node|python|go|all> <local|latest|X.Y.Z>}"
 export WEBHOOK_VECTORS="$root/contract/webhooks.json"
+export PARAMETER_CASES="$root/contract/parameters.json"
 
 if [ "$language" = all ]; then
   for each in node python go; do "$0" "$each" "$source"; done

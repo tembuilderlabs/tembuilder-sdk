@@ -57,11 +57,19 @@ make e2e-published NODE_VERSION=0.2.0      # an exact released version
 ```
 
 Each app checks the installed version, the exports and the shared webhook
-vectors. With `TEMBUILDER_API_KEY`, `TEMBUILDER_BASE_URL` and
-`TEMBUILDER_SMOKE_TEMPLATE` set it also renders a real PDF (account, template
-input, list, render, wait, download, render log, 404/401 errors);
+vectors. With `TEMBUILDER_API_KEY`, `TEMBUILDER_BASE_URL`,
+`TEMBUILDER_SMOKE_TEMPLATE` and `TEMBUILDER_PARAMETER_TEMPLATE` set it also
+renders real PDFs: account, template input, list, render, wait, download
+through the signed `file_url` and through the API, render log, 404/401 errors,
+and the parameter scenarios of `contract/parameters.json` (every parameter
+type, defaults only, a wrongly typed parameter that must fail).
 `REQUIRE_LIVE=1` makes a missing live environment fail. For a local stack,
 keep those variables in the git-ignored `.env.smoke` and run `make e2e-live`.
+
+`TEMBUILDER_PARAMETER_TEMPLATE` is the slug of `e2e/parameter-template`
+imported into the smoke project (Templates → Import, then publish):
+`./e2e/build-parameter-template.sh` packs it into that ZIP. On GitHub it is
+the `SMOKE_PARAMETER_TEMPLATE` variable of the `production` environment.
 
 ## Pinned generators
 

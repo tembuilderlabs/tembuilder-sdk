@@ -63,6 +63,34 @@
       }
     },
     {
+      "name": "getAccount maps a server error",
+      "operation": "getAccount",
+      "args": {},
+      "request": {
+        "method": "GET",
+        "path": "/v1/me",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_INTERNAL",
+          "description": "internal server error",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 500,
+          "code": "COMMON_INTERNAL"
+        }
+      }
+    },
+    {
       "name": "listTemplates sends filters and pagination",
       "operation": "listTemplates",
       "args": {
@@ -141,6 +169,120 @@
         "error": {
           "status": 400,
           "code": "COMMON_VALIDATION"
+        }
+      }
+    },
+    {
+      "name": "listTemplates maps a rejected key",
+      "operation": "listTemplates",
+      "args": {
+        "status": "published",
+        "search": "inv",
+        "page": 2,
+        "per_page": 10
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates",
+        "query": {
+          "status": "published",
+          "search": "inv",
+          "page": "2",
+          "per_page": "10"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_UNAUTHENTICATED",
+          "description": "authentication required",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 401,
+          "code": "COMMON_UNAUTHENTICATED"
+        }
+      }
+    },
+    {
+      "name": "listTemplates maps a key without template:read",
+      "operation": "listTemplates",
+      "args": {
+        "status": "published",
+        "search": "inv",
+        "page": 2,
+        "per_page": 10
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates",
+        "query": {
+          "status": "published",
+          "search": "inv",
+          "page": "2",
+          "per_page": "10"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_FORBIDDEN",
+          "description": "forbidden",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 403,
+          "code": "COMMON_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "listTemplates maps a server error",
+      "operation": "listTemplates",
+      "args": {
+        "status": "published",
+        "search": "inv",
+        "page": 2,
+        "per_page": 10
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates",
+        "query": {
+          "status": "published",
+          "search": "inv",
+          "page": "2",
+          "per_page": "10"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_INTERNAL",
+          "description": "internal server error",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 500,
+          "code": "COMMON_INTERNAL"
         }
       }
     },
@@ -260,6 +402,138 @@
       }
     },
     {
+      "name": "getTemplate maps an invalid version",
+      "operation": "getTemplate",
+      "args": {
+        "template_id": "invoice",
+        "version": 2
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates/invoice",
+        "query": {
+          "version": "2"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_VALIDATION",
+          "description": "version must be a positive integer",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 400,
+          "code": "COMMON_VALIDATION"
+        }
+      }
+    },
+    {
+      "name": "getTemplate maps a rejected key",
+      "operation": "getTemplate",
+      "args": {
+        "template_id": "invoice",
+        "version": 2
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates/invoice",
+        "query": {
+          "version": "2"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_UNAUTHENTICATED",
+          "description": "authentication required",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 401,
+          "code": "COMMON_UNAUTHENTICATED"
+        }
+      }
+    },
+    {
+      "name": "getTemplate maps a key without template:read",
+      "operation": "getTemplate",
+      "args": {
+        "template_id": "invoice",
+        "version": 2
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates/invoice",
+        "query": {
+          "version": "2"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_FORBIDDEN",
+          "description": "forbidden",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 403,
+          "code": "COMMON_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "getTemplate maps a server error",
+      "operation": "getTemplate",
+      "args": {
+        "template_id": "invoice",
+        "version": 2
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/templates/invoice",
+        "query": {
+          "version": "2"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_INTERNAL",
+          "description": "internal server error",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 500,
+          "code": "COMMON_INTERNAL"
+        }
+      }
+    },
+    {
       "name": "createRender posts the request body",
       "operation": "createRender",
       "args": {
@@ -313,6 +587,139 @@
       }
     },
     {
+      "name": "createRender sends every parameter type unchanged",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "parameters": {
+            "text": "Hóa đơn \"#42\"\nline 2",
+            "emptyText": "",
+            "integer": 3,
+            "zero": 0,
+            "negative": -12,
+            "decimal": 19.99,
+            "largeInteger": 9007199254740991,
+            "yes": true,
+            "no": false,
+            "tags": [
+              "a",
+              "b"
+            ],
+            "numbers": [
+              1,
+              2.5,
+              -3
+            ],
+            "flags": [
+              true,
+              false
+            ],
+            "emptyList": [],
+            "lines": [
+              {
+                "sku": "A-1",
+                "qty": 2,
+                "price": 10.5,
+                "taxable": true,
+                "notes": []
+              }
+            ],
+            "customer": {
+              "name": "Acme",
+              "vip": false,
+              "address": {
+                "city": "Hà Nội",
+                "geo": {
+                  "lat": 21.0285,
+                  "lng": 105.8542
+                }
+              },
+              "contacts": [
+                {
+                  "email": "a@b.co"
+                }
+              ]
+            },
+            "emptyObject": {}
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "parameters": {
+            "text": "Hóa đơn \"#42\"\nline 2",
+            "emptyText": "",
+            "integer": 3,
+            "zero": 0,
+            "negative": -12,
+            "decimal": 19.99,
+            "largeInteger": 9007199254740991,
+            "yes": true,
+            "no": false,
+            "tags": [
+              "a",
+              "b"
+            ],
+            "numbers": [
+              1,
+              2.5,
+              -3
+            ],
+            "flags": [
+              true,
+              false
+            ],
+            "emptyList": [],
+            "lines": [
+              {
+                "sku": "A-1",
+                "qty": 2,
+                "price": 10.5,
+                "taxable": true,
+                "notes": []
+              }
+            ],
+            "customer": {
+              "name": "Acme",
+              "vip": false,
+              "address": {
+                "city": "Hà Nội",
+                "geo": {
+                  "lat": 21.0285,
+                  "lng": 105.8542
+                }
+              },
+              "contacts": [
+                {
+                  "email": "a@b.co"
+                }
+              ]
+            },
+            "emptyObject": {}
+          }
+        }
+      },
+      "response": {
+        "status": 202,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+          "status": "queued",
+          "status_url": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+        }
+      },
+      "expect": {
+        "result": "$response"
+      }
+    },
+    {
       "name": "createRender maps an unpublished version",
       "operation": "createRender",
       "args": {
@@ -343,6 +750,287 @@
         "error": {
           "status": 403,
           "code": "PDF_TEMPLATE_VERSION_NOT_PUBLISHED"
+        }
+      }
+    },
+    {
+      "name": "createRender maps an invalid request",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_VALIDATION",
+          "description": "template_id is required",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 400,
+          "code": "COMMON_VALIDATION"
+        }
+      }
+    },
+    {
+      "name": "createRender maps a rejected key",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "PDF_INVALID_API_KEY",
+          "description": "invalid api key",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 401,
+          "code": "PDF_INVALID_API_KEY"
+        }
+      }
+    },
+    {
+      "name": "createRender maps an unknown template",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "PDF_TEMPLATE_NOT_FOUND",
+          "description": "template not found",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 404,
+          "code": "PDF_TEMPLATE_NOT_FOUND"
+        }
+      }
+    },
+    {
+      "name": "createRender maps a server error",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_INTERNAL",
+          "description": "internal server error",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 500,
+          "code": "COMMON_INTERNAL"
+        }
+      }
+    },
+    {
+      "name": "createRender maps busy capacity with Retry-After",
+      "operation": "createRender",
+      "args": {
+        "request": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "request": {
+        "method": "POST",
+        "path": "/v1/pdf/render",
+        "query": {},
+        "body": {
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "version": 2,
+          "variant": "compact",
+          "parameters": {
+            "customer": "Acme",
+            "lines": [
+              {
+                "sku": "A",
+                "qty": 2
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "status": 503,
+        "headers": {
+          "content-type": "application/json",
+          "retry-after": "2"
+        },
+        "body": {
+          "code": "COMMON_UNAVAILABLE",
+          "description": "render capacity is temporarily unavailable",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 503,
+          "code": "COMMON_UNAVAILABLE"
         }
       }
     },
@@ -397,6 +1085,166 @@
       },
       "expect": {
         "result": "$response"
+      }
+    },
+    {
+      "name": "listRenders maps an invalid filter",
+      "operation": "listRenders",
+      "args": {
+        "status": "success",
+        "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+        "started_after": "2026-11-20T00:00:00Z",
+        "page": 1,
+        "per_page": 1
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders",
+        "query": {
+          "status": "success",
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "started_after": "2026-11-20T00:00:00Z",
+          "page": "1",
+          "per_page": "1"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_VALIDATION",
+          "description": "template_id must be a UUID",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 400,
+          "code": "COMMON_VALIDATION"
+        }
+      }
+    },
+    {
+      "name": "listRenders maps a rejected key",
+      "operation": "listRenders",
+      "args": {
+        "status": "success",
+        "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+        "started_after": "2026-11-20T00:00:00Z",
+        "page": 1,
+        "per_page": 1
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders",
+        "query": {
+          "status": "success",
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "started_after": "2026-11-20T00:00:00Z",
+          "page": "1",
+          "per_page": "1"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_UNAUTHENTICATED",
+          "description": "authentication required",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 401,
+          "code": "COMMON_UNAUTHENTICATED"
+        }
+      }
+    },
+    {
+      "name": "listRenders maps a key without template:read",
+      "operation": "listRenders",
+      "args": {
+        "status": "success",
+        "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+        "started_after": "2026-11-20T00:00:00Z",
+        "page": 1,
+        "per_page": 1
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders",
+        "query": {
+          "status": "success",
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "started_after": "2026-11-20T00:00:00Z",
+          "page": "1",
+          "per_page": "1"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_FORBIDDEN",
+          "description": "forbidden",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 403,
+          "code": "COMMON_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "listRenders maps a server error",
+      "operation": "listRenders",
+      "args": {
+        "status": "success",
+        "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+        "started_after": "2026-11-20T00:00:00Z",
+        "page": 1,
+        "per_page": 1
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders",
+        "query": {
+          "status": "success",
+          "template_id": "7d0f5a2e-1c3b-4d5e-9f80-a1b2c3d4e5f6",
+          "started_after": "2026-11-20T00:00:00Z",
+          "page": "1",
+          "per_page": "1"
+        },
+        "body": null
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_INTERNAL",
+          "description": "internal server error",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 500,
+          "code": "COMMON_INTERNAL"
+        }
       }
     },
     {
@@ -483,6 +1331,96 @@
       }
     },
     {
+      "name": "getRender maps a rejected key",
+      "operation": "getRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "RENDER_INVALID_API_KEY",
+          "description": "invalid api key",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 401,
+          "code": "RENDER_INVALID_API_KEY"
+        }
+      }
+    },
+    {
+      "name": "getRender maps a render of another project",
+      "operation": "getRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_FORBIDDEN",
+          "description": "forbidden",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 403,
+          "code": "COMMON_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "getRender maps an unknown or not yet registered render",
+      "operation": "getRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "RENDER_NOT_FOUND",
+          "description": "render not found",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 404,
+          "code": "RENDER_NOT_FOUND"
+        }
+      }
+    },
+    {
       "name": "downloadRender returns PDF bytes and filename",
       "operation": "downloadRender",
       "args": {
@@ -537,6 +1475,96 @@
         "error": {
           "status": 404,
           "code": "RENDER_OUTPUT_NOT_FOUND"
+        }
+      }
+    },
+    {
+      "name": "downloadRender maps a rejected key",
+      "operation": "downloadRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "RENDER_INVALID_API_KEY",
+          "description": "invalid api key",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 401,
+          "code": "RENDER_INVALID_API_KEY"
+        }
+      }
+    },
+    {
+      "name": "downloadRender maps a render of another project",
+      "operation": "downloadRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "COMMON_FORBIDDEN",
+          "description": "forbidden",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 403,
+          "code": "COMMON_FORBIDDEN"
+        }
+      }
+    },
+    {
+      "name": "downloadRender maps a storage failure",
+      "operation": "downloadRender",
+      "args": {
+        "render_id": "5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      },
+      "request": {
+        "method": "GET",
+        "path": "/v1/renders/5a6b7c8d-1e2f-4a3b-8c4d-5e6f7a8b9c0d/download",
+        "query": {},
+        "body": null
+      },
+      "response": {
+        "status": 502,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "body": {
+          "code": "RENDER_OUTPUT_FETCH_FAILED",
+          "description": "failed to fetch render output",
+          "details": []
+        }
+      },
+      "expect": {
+        "error": {
+          "status": 502,
+          "code": "RENDER_OUTPUT_FETCH_FAILED"
         }
       }
     }

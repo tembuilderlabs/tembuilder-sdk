@@ -1,0 +1,45 @@
+{
+  "_comment": "Live parameter scenarios for e2e/parameter-template (import it into the smoke project). Shared by the Node, Python and Go apps.",
+  "valid": {
+    "title": "Hóa đơn \"#42\"\nline 2",
+    "emptyText": "",
+    "quantity": 3,
+    "unitPrice": 19.99,
+    "discount": -12,
+    "paid": true,
+    "tags": [
+      "a",
+      "b"
+    ],
+    "scores": [
+      1,
+      2.5,
+      -3
+    ],
+    "lines": [
+      {
+        "sku": "A-1",
+        "qty": 2,
+        "price": 10.5,
+        "taxable": true
+      },
+      {
+        "sku": "B-2",
+        "qty": 0,
+        "price": 0,
+        "taxable": false
+      }
+    ],
+    "customer": {
+      "name": "Acme",
+      "vip": false,
+      "address": {
+        "city": "Hà Nội",
+        "zip": "100000"
+      }
+    }
+  },
+  "invalid": {
+    "quantity": "three"
+  }
+}

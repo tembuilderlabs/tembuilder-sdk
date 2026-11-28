@@ -52,7 +52,7 @@ jobs:
         if: vars.SPEC_SYNC_APP_ID != ''
         run: make check-spec BE_SPEC=.be/svr/service-svr/internal/publicapi/openapi.yaml
       - name: Contract cases agree with the spec
-        run: cd scripts/contractcheck && go test ./... && go run . ../../openapi/tembuilder.yaml ../../contract/cases.json
+        run: cd scripts/contractcheck && go test -coverprofile=coverage.out ./... && ../require-go-coverage.sh coverage.out && go run . ../../openapi/tembuilder.yaml ../../contract/cases.json
       - name: Breaking changes against the base branch
         if: github.event_name == 'pull_request'
         env:

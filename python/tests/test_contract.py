@@ -98,7 +98,22 @@ def check_request(case: dict[str, Any], recorder: Recorder) -> None:
     if expected["body"] is None:
         assert sent.content == b""
     else:
-        assert json.loads(sent.content) == expected["body"]
+        assert_same_json(json.loads(sent.content), expected["body"])
+
+
+def assert_same_json(sent: Any, expected: Any, path: str = "$") -> None:
+    """Equal values of equal JSON types: == alone accepts 3 for 3.0 and True for 1."""
+    assert type(sent) is type(expected), f"{path}: sent {sent!r} ({type(sent).__name__}), want {expected!r}"
+    if isinstance(expected, dict):
+        assert sent.keys() == expected.keys(), f"{path}: keys {sorted(sent)} != {sorted(expected)}"
+        for key in expected:
+            assert_same_json(sent[key], expected[key], f"{path}.{key}")
+    elif isinstance(expected, list):
+        assert len(sent) == len(expected), f"{path}: {len(sent)} items, want {len(expected)}"
+        for index, (item, want) in enumerate(zip(sent, expected, strict=True)):
+            assert_same_json(item, want, f"{path}[{index}]")
+    else:
+        assert sent == expected, f"{path}: sent {sent!r}, want {expected!r}"
 
 
 def check_outcome(case: dict[str, Any], value: Any, error: BaseException | None) -> None:

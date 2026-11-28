@@ -1,7 +1,8 @@
 // Command contractcheck verifies that contract/cases.json, the HTTP cases
 // every SDK replays, agrees with the public OpenAPI contract:
 //
-//   - every operation in the spec has at least one case, and every case names
+//   - every operation in the spec has at least one case, every response the
+//     spec documents for it (each status code) has one, and every case names
 //     an operation of the spec;
 //   - each case sends its operation's method and path;
 //   - each successful case sends a request the spec accepts;
@@ -61,21 +62,30 @@ func init() {
 	openapi3filter.RegisterBodyDecoder("application/pdf", openapi3filter.FileBodyDecoder)
 }
 
+// exit is os.Exit, replaceable so a test can run main in-process.
+var exit = os.Exit
+
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "usage: contractcheck <openapi.yaml> <cases.json>")
-		os.Exit(2)
+	exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// run is main without the process exit, so every outcome is testable.
+func run(args []string, stdout, stderr io.Writer) int {
+	if len(args) != 2 {
+		fmt.Fprintln(stderr, "usage: contractcheck <openapi.yaml> <cases.json>")
+		return 2
 	}
-	problems, err := checkFiles(os.Args[1], os.Args[2])
+	problems, err := checkFiles(args[0], args[1])
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
 	if len(problems) > 0 {
-		fmt.Fprintf(os.Stderr, "contract/cases.json disagrees with the spec:\n  - %s\n", strings.Join(problems, "\n  - "))
-		os.Exit(1)
+		fmt.Fprintf(stderr, "contract/cases.json disagrees with the spec:\n  - %s\n", strings.Join(problems, "\n  - "))
+		return 1
 	}
-	fmt.Println("contract cases agree with the spec")
+	fmt.Fprintln(stdout, "contract cases agree with the spec")
+	return 0
 }
 
 func checkFiles(specPath, casesPath string) ([]string, error) {
@@ -104,20 +114,33 @@ func check(doc *openapi3.T, s suite) ([]string, error) {
 	}
 	var problems []string
 	covered := map[string]bool{}
+	statuses := map[string]bool{}
 	for _, c := range s.Cases {
 		covered[c.Operation] = true
+		statuses[fmt.Sprintf("%s %d", c.Operation, c.Response.Status)] = true
 		problems = append(problems, checkCase(router, s.APIKey, c)...)
 	}
-	var operations []string
+	var operations []*openapi3.Operation
 	for _, item := range doc.Paths.Map() {
 		for _, op := range item.Operations() {
-			operations = append(operations, op.OperationID)
+			operations = append(operations, op)
 		}
 	}
-	sort.Strings(operations)
-	for _, id := range operations {
-		if !covered[id] {
-			problems = append(problems, "operation "+id+" has no contract case")
+	sort.Slice(operations, func(i, j int) bool { return operations[i].OperationID < operations[j].OperationID })
+	for _, op := range operations {
+		if !covered[op.OperationID] {
+			problems = append(problems, "operation "+op.OperationID+" has no contract case")
+			continue
+		}
+		var codes []string
+		for code := range op.Responses.Map() {
+			codes = append(codes, code)
+		}
+		sort.Strings(codes)
+		for _, code := range codes {
+			if !statuses[op.OperationID+" "+code] {
+				problems = append(problems, "operation "+op.OperationID+" documents response "+code+" but no case covers it")
+			}
 		}
 	}
 	return problems, nil

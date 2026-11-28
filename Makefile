@@ -51,7 +51,7 @@ test:
 # contract/cases.json must agree with the spec (every operation covered, each
 # request and response documented), then the Node SDK runs against a Prism mock.
 conformance:
-	cd scripts/contractcheck && go test ./... && go run . ../../openapi/tembuilder.yaml ../../contract/cases.json
+	cd scripts/contractcheck && go test -coverprofile=coverage.out ./... && ../require-go-coverage.sh coverage.out && go run . ../../openapi/tembuilder.yaml ../../contract/cases.json
 	cd node && pnpm test:conformance
 
 build:
@@ -65,8 +65,8 @@ breaking:
 
 # Installs each SDK into a brand-new app (packed tarball, built wheel, local
 # module) and runs it like a user would. Offline checks always run; with
-# TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL and TEMBUILDER_SMOKE_TEMPLATE it also
-# renders a real PDF. See e2e/run.sh.
+# TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL, TEMBUILDER_SMOKE_TEMPLATE and
+# TEMBUILDER_PARAMETER_TEMPLATE it also renders real PDFs. See e2e/run.sh.
 e2e:
 	./e2e/run.sh all local
 

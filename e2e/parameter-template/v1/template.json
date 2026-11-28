@@ -1,0 +1,261 @@
+{
+  "$schema": "https://api.tembuilder.com/schemas/template-v1.json",
+  "global": {
+    "config": {
+      "direction": "ltr",
+      "background": null,
+      "fonts": [
+        {
+          "name": "Inter",
+          "provider": "google"
+        }
+      ],
+      "margin": {
+        "enabled": true,
+        "mirror": false,
+        "settings": {
+          "bottom": 12,
+          "left": 16,
+          "right": 16,
+          "top": 14
+        }
+      },
+      "typography": {
+        "color": "#1F2937",
+        "fontSize": 10.5,
+        "letterSpacing": 0,
+        "lineHeight": 1.5,
+        "textAlign": "left"
+      },
+      "watermark": null
+    },
+    "footer": {
+      "config": {
+        "background": null,
+        "margin": {
+          "enabled": true,
+          "mirror": false,
+          "settings": {
+            "bottom": 8,
+            "left": 16,
+            "right": 16,
+            "top": 3
+          }
+        }
+      },
+      "enabled": false,
+      "props": []
+    },
+    "props": []
+  },
+  "pages": {
+    "coverage": {
+      "config": {
+        "background": {
+          "enabled": false,
+          "settings": {}
+        },
+        "watermark": {
+          "mode": "inherit"
+        }
+      },
+      "label": "Parameter coverage"
+    }
+  },
+  "paperSize": "A4",
+  "orientation": "portrait",
+  "parameters": [
+    {
+      "name": "title",
+      "type": "text",
+      "description": "Free text, including Unicode, quotes and line breaks.",
+      "default": "Hóa đơn \"#42\"",
+      "required": true
+    },
+    {
+      "name": "emptyText",
+      "type": "text",
+      "description": "Text that may be empty.",
+      "default": "",
+      "required": false
+    },
+    {
+      "name": "quantity",
+      "type": "number",
+      "description": "Whole number.",
+      "default": 3,
+      "required": true
+    },
+    {
+      "name": "unitPrice",
+      "type": "number",
+      "description": "Decimal number.",
+      "default": 19.99,
+      "required": true
+    },
+    {
+      "name": "discount",
+      "type": "number",
+      "description": "Negative number.",
+      "default": -12,
+      "required": true
+    },
+    {
+      "name": "paid",
+      "type": "boolean",
+      "description": "True or false.",
+      "default": true,
+      "required": true
+    },
+    {
+      "name": "tags",
+      "type": "array",
+      "description": "List of text values.",
+      "default": [
+        "a",
+        "b"
+      ],
+      "required": true,
+      "itemSchema": {
+        "type": "text"
+      }
+    },
+    {
+      "name": "scores",
+      "type": "array",
+      "description": "List of numbers.",
+      "default": [
+        1,
+        2.5,
+        -3
+      ],
+      "required": true,
+      "itemSchema": {
+        "type": "number"
+      }
+    },
+    {
+      "name": "lines",
+      "type": "array",
+      "description": "List of objects, each with nested fields.",
+      "default": [
+        {
+          "sku": "A-1",
+          "qty": 2,
+          "price": 10.5,
+          "taxable": true
+        }
+      ],
+      "required": true,
+      "itemSchema": {
+        "type": "object",
+        "fields": [
+          {
+            "name": "sku",
+            "type": "text",
+            "required": true,
+            "description": "Item code."
+          },
+          {
+            "name": "qty",
+            "type": "number",
+            "required": true,
+            "description": "Quantity."
+          },
+          {
+            "name": "price",
+            "type": "number",
+            "required": true,
+            "description": "Unit price."
+          },
+          {
+            "name": "taxable",
+            "type": "boolean",
+            "required": true,
+            "description": "Whether tax applies."
+          }
+        ]
+      }
+    },
+    {
+      "name": "customer",
+      "type": "object",
+      "description": "Object with a nested object.",
+      "default": {
+        "name": "Acme",
+        "vip": false,
+        "address": {
+          "city": "Hà Nội",
+          "zip": "100000"
+        }
+      },
+      "required": true,
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "description": "Customer name."
+        },
+        {
+          "name": "vip",
+          "type": "boolean",
+          "required": true,
+          "description": "VIP flag."
+        },
+        {
+          "name": "address",
+          "type": "object",
+          "required": true,
+          "description": "Postal address.",
+          "fields": [
+            {
+              "name": "city",
+              "type": "text",
+              "required": true,
+              "description": "City."
+            },
+            {
+              "name": "zip",
+              "type": "text",
+              "required": true,
+              "description": "Postal code."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "renderProfile": {
+    "chromeVersion": 151
+  },
+  "schemaVersion": 1,
+  "sections": {
+    "coverage": {
+      "config": {
+        "break": {
+          "inside": "auto"
+        }
+      },
+      "label": "Parameter coverage",
+      "props": []
+    }
+  },
+  "variants": [
+    {
+      "base": true,
+      "layout": {
+        "pages": [
+          {
+            "id": "coverage",
+            "sections": [
+              "coverage"
+            ]
+          }
+        ]
+      },
+      "name": "Base",
+      "override": {}
+    }
+  ]
+}

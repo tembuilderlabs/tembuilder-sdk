@@ -3,7 +3,8 @@
 e2e/run.sh installs ``tembuilder`` into an empty virtualenv (from the built
 wheel or from PyPI) and runs this file, so it proves the package as users get
 it: imports, version, webhooks and, with TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL
-and TEMBUILDER_SMOKE_TEMPLATE, a real render through the sync and async clients.
+and TEMBUILDER_SMOKE_TEMPLATE/TEMBUILDER_PARAMETER_TEMPLATE, real renders through the
+sync and async clients.
 """
 
 from __future__ import annotations
@@ -14,10 +15,11 @@ import os
 import sys
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-from tembuilder import APIError, AsyncTembuilder, Tembuilder, __version__, verify_webhook
+from tembuilder import APIError, AsyncTembuilder, RenderFailedError, Tembuilder, __version__, verify_webhook
 
-LIVE = ("TEMBUILDER_API_KEY", "TEMBUILDER_BASE_URL", "TEMBUILDER_SMOKE_TEMPLATE")
+LIVE = ("TEMBUILDER_API_KEY", "TEMBUILDER_BASE_URL", "TEMBUILDER_SMOKE_TEMPLATE", "TEMBUILDER_PARAMETER_TEMPLATE")
 
 
 def step(name: str) -> None:
@@ -86,25 +88,62 @@ def live_sync(template_ref: str) -> None:
         page = client.renders.list(template_id=template.id, per_page=20)
         assert any(render.id == status.render_id for render in page.data)
 
+        live_parameters(client)
+
         step("typed errors: unknown template is 404, bad key is 401")
         expect_api_error(lambda: client.templates.get("e2e-template-that-does-not-exist"), 404)
     with Tembuilder(api_key="invalid") as bad:
         assert expect_api_error(bad.account.get, 401).code == "COMMON_UNAUTHENTICATED"
 
 
+def parameter_cases() -> dict[str, Any]:
+    cases: dict[str, Any] = json.loads(Path(os.environ["PARAMETER_CASES"]).read_text())
+    return cases
+
+
+def live_parameters(client: Tembuilder) -> None:
+    cases = parameter_cases()
+    template = client.templates.get(os.environ["TEMBUILDER_PARAMETER_TEMPLATE"])
+
+    step("every parameter type renders (text, number, boolean, array, nested object)")
+    typed = client.renders.create_and_wait(template.id, parameters=cases["valid"], timeout=180, poll_interval=2)
+    assert client.renders.download(typed).content[:5] == b"%PDF-"
+
+    step("omitted parameters fall back to their defaults")
+    defaults = client.renders.create_and_wait(template.id, timeout=180, poll_interval=2)
+    assert client.renders.download(defaults).content[:5] == b"%PDF-"
+
+    step("a parameter of the wrong type is rejected, not rendered")
+    try:
+        client.renders.create_and_wait(
+            template.id, parameters={**cases["valid"], **cases["invalid"]}, timeout=180, poll_interval=2
+        )
+    except RenderFailedError as error:
+        assert error.render.status == "failed"
+    except APIError as error:
+        assert 400 <= error.status < 500, error
+    else:
+        raise AssertionError("a wrongly typed parameter rendered")
+
+
 async def live_async(template_ref: str) -> None:
-    step("async client: account and template")
+    step("async client: account, template and every parameter type")
     async with AsyncTembuilder() as client:
         account = await client.account.get()
         template = await client.templates.get(template_ref)
         assert account.project.id and template.id
+        parameter_template = await client.templates.get(os.environ["TEMBUILDER_PARAMETER_TEMPLATE"])
+        typed = await client.renders.create_and_wait(
+            parameter_template.id, parameters=parameter_cases()["valid"], timeout=180, poll_interval=2
+        )
+        assert (await client.renders.download(typed)).content[:5] == b"%PDF-"
 
 
 def main() -> None:
     offline()
     if not all(os.environ.get(name) for name in LIVE):
         assert os.environ.get("REQUIRE_LIVE") != "1", "REQUIRE_LIVE=1 but the live environment is not set"
-        print("live API: skipped (TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL, TEMBUILDER_SMOKE_TEMPLATE not set)")
+        print(f"live API: skipped ({', '.join(LIVE)} not set)")
         print("python e2e ok")
         sys.exit(0)
     template_ref = os.environ["TEMBUILDER_SMOKE_TEMPLATE"]

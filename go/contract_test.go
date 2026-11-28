@@ -1,6 +1,7 @@
 package tembuilder
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -148,9 +149,8 @@ func TestSharedHTTPContract(t *testing.T) {
 					t.Fatalf("unexpected body %s", sent.Body)
 				}
 			} else {
-				var got, want any
-				_ = json.Unmarshal(sent.Body, &got)
-				_ = json.Unmarshal(tc.Request.Body, &want)
+				// json.Number keeps each number's text, so 3 and 3.0 differ.
+				got, want := decodeExact(sent.Body), decodeExact(tc.Request.Body)
 				if !reflect.DeepEqual(got, want) {
 					t.Fatalf("body %s, want %s", sent.Body, tc.Request.Body)
 				}
@@ -188,4 +188,12 @@ func toAny(m map[string]string) any {
 		out[key] = value
 	}
 	return out
+}
+
+func decodeExact(data []byte) any {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+	var value any
+	_ = decoder.Decode(&value)
+	return value
 }

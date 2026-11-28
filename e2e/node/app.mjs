@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 
-import { APIError, Tembuilder, VERSION, verifyWebhook } from '@tembuilderlabs/sdk'
+import { APIError, RenderFailedError, Tembuilder, VERSION, verifyWebhook } from '@tembuilderlabs/sdk'
 
 const step = (name) => console.log(`- ${name}`)
 
@@ -30,10 +30,10 @@ for (const vector of contract.vectors) {
   else assert.throws(verify, vector.name)
 }
 
-const live = ['TEMBUILDER_API_KEY', 'TEMBUILDER_BASE_URL', 'TEMBUILDER_SMOKE_TEMPLATE'].every((name) => process.env[name])
+const live = ['TEMBUILDER_API_KEY', 'TEMBUILDER_BASE_URL', 'TEMBUILDER_SMOKE_TEMPLATE', 'TEMBUILDER_PARAMETER_TEMPLATE'].every((name) => process.env[name])
 if (!live) {
   assert.ok(process.env.REQUIRE_LIVE !== '1', 'REQUIRE_LIVE=1 but the live environment is not set')
-  console.log('live API: skipped (TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL, TEMBUILDER_SMOKE_TEMPLATE not set)')
+  console.log('live API: skipped (TEMBUILDER_API_KEY, TEMBUILDER_BASE_URL, TEMBUILDER_SMOKE_TEMPLATE, TEMBUILDER_PARAMETER_TEMPLATE not set)')
   console.log('node e2e ok')
   process.exit(0)
 }
@@ -73,6 +73,30 @@ assert.equal(viaApi.filename, signed.filename)
 step('render log contains it')
 const page = await client.renders.list({ template_id: template.id, per_page: 20 })
 assert.ok(page.data.some((render) => render.id === status.render_id))
+
+const parameterCases = JSON.parse(readFileSync(process.env.PARAMETER_CASES, 'utf8'))
+const parameterTemplate = await client.templates.get(process.env.TEMBUILDER_PARAMETER_TEMPLATE)
+const isPdf = (file) => new TextDecoder().decode(file.bytes.slice(0, 5)) === '%PDF-'
+
+step('every parameter type renders (text, number, boolean, array, nested object)')
+const typed = await client.renders.createAndWait(
+  { template_id: parameterTemplate.id, parameters: parameterCases.valid },
+  { timeoutMs: 180_000, pollIntervalMs: 2_000 },
+)
+assert.ok(isPdf(await client.renders.download(typed)))
+
+step('omitted parameters fall back to their defaults')
+const defaults = await client.renders.createAndWait({ template_id: parameterTemplate.id }, { timeoutMs: 180_000, pollIntervalMs: 2_000 })
+assert.ok(isPdf(await client.renders.download(defaults)))
+
+step('a parameter of the wrong type is rejected, not rendered')
+await assert.rejects(
+  client.renders.createAndWait(
+    { template_id: parameterTemplate.id, parameters: { ...parameterCases.valid, ...parameterCases.invalid } },
+    { timeoutMs: 180_000, pollIntervalMs: 2_000 },
+  ),
+  (error) => (error instanceof RenderFailedError && error.render.status === 'failed') || (error instanceof APIError && error.status >= 400 && error.status < 500),
+)
 
 step('typed errors: unknown template is 404, bad key is 401')
 await assert.rejects(client.templates.get('e2e-template-that-does-not-exist'), (error) => error instanceof APIError && error.status === 404)

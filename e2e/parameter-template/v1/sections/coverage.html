@@ -1,0 +1,11 @@
+<section class="cov">
+  <h1>SDK parameter coverage</h1>
+  <p>title=[{{ params.title }}]</p>
+  <p>emptyText=[{{ params.emptyText }}]</p>
+  <p>quantity=[{{ params.quantity }}] unitPrice=[{{ params.unitPrice }}] discount=[{{ params.discount }}]</p>
+  <p>paid=[{{#if params.paid}}yes{{else}}no{{/if}}]</p>
+  <p>tags=[{{#each params.tags}}{{ this }};{{/each}}]</p>
+  <p>scores=[{{#each params.scores}}{{ this }};{{/each}}]</p>
+  <ul>{{#each params.lines}}<li>line sku=[{{ this.sku }}] qty=[{{ this.qty }}] price=[{{ this.price }}] taxable=[{{#if this.taxable}}yes{{else}}no{{/if}}]</li>{{/each}}</ul>
+  <p>customer=[{{ params.customer.name }}] vip=[{{#if params.customer.vip}}yes{{else}}no{{/if}}] city=[{{ params.customer.address.city }}] zip=[{{ params.customer.address.zip }}]</p>
+</section>
