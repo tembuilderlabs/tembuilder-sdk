@@ -125,23 +125,25 @@ func liveParameters(ctx context.Context, client *tembuilder.Client) {
 	}
 	check(json.Unmarshal(must(os.ReadFile(os.Getenv("PARAMETER_CASES"))), &cases) == nil, "parameter cases are not JSON")
 	template := must(client.Templates.Get(ctx, os.Getenv("TEMBUILDER_PARAMETER_TEMPLATE"), tembuilder.GetTemplateParams{}))
+	check(len(template.PublishedVersions) > 0, "parameter template has no published version")
+	version := tembuilder.Ptr(template.PublishedVersions[len(template.PublishedVersions)-1])
 	wait := tembuilder.WaitOptions{PollInterval: 2 * time.Second, Timeout: 3 * time.Minute}
 	isPDF := func(status *tembuilder.RenderStatus) bool {
 		return bytes.HasPrefix(must(client.Renders.DownloadFrom(ctx, status)).Content, []byte("%PDF-"))
 	}
 
 	step("every parameter type renders (text, number, boolean, array, nested object)")
-	typed := must(client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Parameters: &cases.Valid}, wait))
+	typed := must(client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Version: version, Parameters: &cases.Valid}, wait))
 	check(isPDF(typed), "typed render is not a PDF")
 
 	step("omitted parameters fall back to their defaults")
-	defaults := must(client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id}, wait))
+	defaults := must(client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Version: version}, wait))
 	check(isPDF(defaults), "defaults render is not a PDF")
 
 	step("a parameter of the wrong type is rejected, not rendered")
 	wrong := maps.Clone(cases.Valid)
 	maps.Copy(wrong, cases.Invalid)
-	_, err := client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Parameters: &wrong}, wait)
+	_, err := client.Renders.CreateAndWait(ctx, tembuilder.RenderRequest{TemplateId: template.Id, Version: version, Parameters: &wrong}, wait)
 	var failed *tembuilder.RenderFailedError
 	var apiErr *tembuilder.APIError
 	check((errors.As(err, &failed) && failed.Render.Status == tembuilder.RenderStatusFailed) ||

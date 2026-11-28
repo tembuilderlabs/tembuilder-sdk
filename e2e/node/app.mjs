@@ -76,23 +76,25 @@ assert.ok(page.data.some((render) => render.id === status.render_id))
 
 const parameterCases = JSON.parse(readFileSync(process.env.PARAMETER_CASES, 'utf8'))
 const parameterTemplate = await client.templates.get(process.env.TEMBUILDER_PARAMETER_TEMPLATE)
+assert.ok(parameterTemplate.published_versions.length > 0, 'parameter template has no published version')
+const parameterVersion = parameterTemplate.published_versions.at(-1)
 const isPdf = (file) => new TextDecoder().decode(file.bytes.slice(0, 5)) === '%PDF-'
 
 step('every parameter type renders (text, number, boolean, array, nested object)')
 const typed = await client.renders.createAndWait(
-  { template_id: parameterTemplate.id, parameters: parameterCases.valid },
+  { template_id: parameterTemplate.id, version: parameterVersion, parameters: parameterCases.valid },
   { timeoutMs: 180_000, pollIntervalMs: 2_000 },
 )
 assert.ok(isPdf(await client.renders.download(typed)))
 
 step('omitted parameters fall back to their defaults')
-const defaults = await client.renders.createAndWait({ template_id: parameterTemplate.id }, { timeoutMs: 180_000, pollIntervalMs: 2_000 })
+const defaults = await client.renders.createAndWait({ template_id: parameterTemplate.id, version: parameterVersion }, { timeoutMs: 180_000, pollIntervalMs: 2_000 })
 assert.ok(isPdf(await client.renders.download(defaults)))
 
 step('a parameter of the wrong type is rejected, not rendered')
 await assert.rejects(
   client.renders.createAndWait(
-    { template_id: parameterTemplate.id, parameters: { ...parameterCases.valid, ...parameterCases.invalid } },
+    { template_id: parameterTemplate.id, version: parameterVersion, parameters: { ...parameterCases.valid, ...parameterCases.invalid } },
     { timeoutMs: 180_000, pollIntervalMs: 2_000 },
   ),
   (error) => (error instanceof RenderFailedError && error.render.status === 'failed') || (error instanceof APIError && error.status >= 400 && error.status < 500),

@@ -104,19 +104,27 @@ def parameter_cases() -> dict[str, Any]:
 def live_parameters(client: Tembuilder) -> None:
     cases = parameter_cases()
     template = client.templates.get(os.environ["TEMBUILDER_PARAMETER_TEMPLATE"])
+    assert template.published_versions, "parameter template has no published version"
+    version = template.published_versions[-1]
 
     step("every parameter type renders (text, number, boolean, array, nested object)")
-    typed = client.renders.create_and_wait(template.id, parameters=cases["valid"], timeout=180, poll_interval=2)
+    typed = client.renders.create_and_wait(
+        template.id, version=version, parameters=cases["valid"], timeout=180, poll_interval=2
+    )
     assert client.renders.download(typed).content[:5] == b"%PDF-"
 
     step("omitted parameters fall back to their defaults")
-    defaults = client.renders.create_and_wait(template.id, timeout=180, poll_interval=2)
+    defaults = client.renders.create_and_wait(template.id, version=version, timeout=180, poll_interval=2)
     assert client.renders.download(defaults).content[:5] == b"%PDF-"
 
     step("a parameter of the wrong type is rejected, not rendered")
     try:
         client.renders.create_and_wait(
-            template.id, parameters={**cases["valid"], **cases["invalid"]}, timeout=180, poll_interval=2
+            template.id,
+            version=version,
+            parameters={**cases["valid"], **cases["invalid"]},
+            timeout=180,
+            poll_interval=2,
         )
     except RenderFailedError as error:
         assert error.render.status == "failed"
@@ -134,7 +142,11 @@ async def live_async(template_ref: str) -> None:
         assert account.project.id and template.id
         parameter_template = await client.templates.get(os.environ["TEMBUILDER_PARAMETER_TEMPLATE"])
         typed = await client.renders.create_and_wait(
-            parameter_template.id, parameters=parameter_cases()["valid"], timeout=180, poll_interval=2
+            parameter_template.id,
+            version=parameter_template.published_versions[-1],
+            parameters=parameter_cases()["valid"],
+            timeout=180,
+            poll_interval=2,
         )
         assert (await client.renders.download(typed)).content[:5] == b"%PDF-"
 
